@@ -4,8 +4,8 @@
   "filename": "matches-card.js",
   "render_readme": true,
   "gui_editor": true,
-  "description": "Karta 90minut.pl z pełnym GUI i automatyczną szerokością kolumny ligi.",
-  "version": "v0.7_gui-stable",
+  "description": "Karta 90minut.pl z pełnym GUI, rozdzielonymi kolumnami i automatyczną szerokością ligi.",
+  "version": "v0.8_gui-polished",
   "domain": "matches_card",
   "codeowners": ["@GieOeRZet"]
 }

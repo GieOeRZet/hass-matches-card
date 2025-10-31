@@ -1,5 +1,5 @@
 /*********************************************************************
- *  MATCHES CARD (v0.2_b)
+ *  MATCHES CARD (v0.1.001)
  *  Autor: Roman (GieOeRZet)
  *  Opis:  Karta wyników meczów w stylu Sofascore
  *         Z obsługą GUI edytora (dynamiczny import)

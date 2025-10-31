@@ -4,8 +4,8 @@
   "filename": "matches-card.js",
   "render_readme": true,
   "gui_editor": true,
-  "description": "Karta 90minut.pl z pełnym edytorem GUI zgodnym z frameworkiem Home Assistant 2025.",
-  "version": "v0.6_gui-modern",
+  "description": "Karta 90minut.pl z pełnym GUI i automatyczną szerokością kolumny ligi.",
+  "version": "v0.7_gui-stable",
   "domain": "matches_card",
   "codeowners": ["@GieOeRZet"]
 }

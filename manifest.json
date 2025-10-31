@@ -4,8 +4,8 @@
   "filename": "matches-card.js",
   "render_readme": true,
   "gui_editor": true,
-  "description": "Pełna karta Lovelace dla meczów z 90minut.pl z GUI i dwoma herbami",
-  "version": "v0.2_ui",
+  "description": "Karta Sofascore dla meczów z 90minut.pl — dwa herby, hover, kolumny, GUI",
+  "version": "v0.4_sofascore",
   "domain": "matches_card",
   "codeowners": ["@GieOeRZet"]
 }

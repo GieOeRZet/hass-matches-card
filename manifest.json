@@ -1,15 +1,19 @@
 {
   "domain": "matches_card",
   "name": "Matches Card",
+  "version": "0.1.002",
   "documentation": "https://github.com/GieOeRZet/matches-card",
-  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "version": "v0.1.001",
-  "type": "module",
-  "render_readme": true,
-  "gui": true,
+  "dependencies": [],
+  "codeowners": ["@GieOeRZet"],
+  "iot_class": "local_polling",
+  "homeassistant": "2024.8.0",
   "resources": [
     {
       "file": "matches-card.js",
+      "type": "module"
+    },
+    {
+      "file": "matches-card-editor.js",
       "type": "module"
     }
   ]

@@ -17,9 +17,7 @@ Pokazuje datę, rozgrywki, herby drużyn, wynik oraz wynik meczu (W/P/R) w estet
 1. W HACS → *Ustawienia → Repozytoria → Dodaj repozytorium*  
 2. Wpisz:
 
-
 https://github.com/GieOeRZet/matches-card
-
 3. Wybierz kategorię: **Frontend**  
 4. Po dodaniu znajdź kartę `90minut Matches Card` i zainstaluj.
 5. Odśwież interfejs Home Assistant (Ctrl + F5).
@@ -27,37 +25,23 @@ https://github.com/GieOeRZet/matches-card
 ### 🔹 Opcja 2 – ręcznie
 1. Skopiuj cały folder `matches-card` do:
 
-
 /config/www/community/matches-card/
-
 2. Dodaj zasoby do `configuration.yaml` lub przez **Ustawienia → Zasoby → Dodaj zasób**:
 
 ```yaml
 url: /local/community/matches-card/matches-card.js
 type: module
 
+
 🧩 Konfiguracja karty
-
 Karta automatycznie wykrywa mecze z integracji 90minut.pl (np. sensor.90minut_gornik_zabrze_matches).
-
 🔹 Edytor graficzny (GUI)
-
 Po dodaniu nowej karty wybierz „90minut Matches Card” z listy.
 Z poziomu interfejsu możesz ustawić:
+ParametrTypOpisEncjapickerWybierz sensor 90minut_XXXXTytuł kartytekstDowolna nazwa nagłówkaPokaż herby drużynprzełącznikWłącza / wyłącza loga klubówEfekt hoverprzełącznikPodświetlenie wiersza po najechaniuKolor cienia hoverakolor (rgba)Kolor podświetleniaWyrównanie nazw drużynlistaLewo / środek / prawoRozmiar czcionkiliczbaDomyślnie 14pxSzerokości kolumn (%)pola liczboweData / Liga / Herb / Wynik / Ikona WPR
 
-Parametr	Typ	Opis
-Encja	picker	Wybierz sensor 90minut_XXXX
-Tytuł karty	tekst	Dowolna nazwa nagłówka
-Pokaż herby drużyn	przełącznik	Włącza / wyłącza loga klubów
-Efekt hover	przełącznik	Podświetlenie wiersza po najechaniu
-Kolor cienia hovera	kolor (rgba)	Kolor podświetlenia
-Wyrównanie nazw drużyn	lista	Lewo / środek / prawo
-Rozmiar czcionki	liczba	Domyślnie 14px
-Szerokości kolumn (%)	pola liczbowe	Data / Liga / Herb / Wynik / Ikona WPR
 🧾 Przykład YAML
-
 Jeśli chcesz dodać kartę ręcznie w YAML:
-
 type: custom:matches-card
 entity: sensor.90minut_gornik_zabrze_matches
 name: Górnik Zabrze – Mecze
@@ -73,28 +57,32 @@ column_widths:
   score: 10
   result: 8
 
-🌗 Tryb ciemny i jasny
 
+🌗 Tryb ciemny i jasny
 Karta automatycznie dopasowuje się do motywu Home Assistant (dark / light).
 Kolory są pobierane z bieżących zmiennych motywu (--primary-color, --card-background-color, --text-color itp.)
 
 🧠 Dodatkowe funkcje (planowane)
 
+
 ⚽ Tryb „compact” – mniejsze odstępy i mniejsze loga
+
 
 🏅 Grupowanie meczów wg rozgrywek
 
+
 📆 Filtrowanie tylko najbliższych meczów
+
 
 🎨 Własne kolory dla W/P/R
 
-🧑‍💻 Autor
 
+
+🧑‍💻 Autor
 Roman (GieOeRZet)
 GitHub: github.com/GieOeRZet
 
 🪪 Licencja
-
 Projekt na licencji MIT
 
 📦 Folder struktury
@@ -110,7 +98,6 @@ matches-card/
 
 💡 Po publikacji repozytorium możesz dodać preview.png,
 żeby karta ładnie prezentowała się w HACS.
-
 
 ---
 

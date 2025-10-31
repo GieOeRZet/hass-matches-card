@@ -1,26 +1,16 @@
 {
+  "domain": "matches_card",
   "name": "Matches Card",
-  "filename": "matches-card.js",
+  "documentation": "https://github.com/GieOeRZet/matches-card",
+  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
+  "version": "v0.2_b",
+  "type": "module",
+  "render_readme": true,
+  "gui": true,
   "resources": [
     {
       "file": "matches-card.js",
       "type": "module"
-    },
-    {
-      "file": "matches-card-editor.js",
-      "type": "module"
     }
-  ],
-  "version": "1.1-tableGrid-GUI",
-  "domain": "matches-card",
-  "render_readme": true,
-  "homeassistant": "2024.8.0",
-  "hide_default_branch": true,
-  "iot_class": "local_polling",
-  "documentation": "https://github.com/gieoerzet/matches-card",
-  "issue_tracker": "https://github.com/gieoerzet/matches-card/issues",
-  "requirements": [],
-  "codeowners": ["@gieoerzet"],
-  "integration_type": "helper",
-  "gui": true
+  ]
 }

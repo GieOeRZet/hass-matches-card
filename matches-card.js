@@ -1,195 +1,235 @@
-class MatchesCard extends HTMLElement {
-  static get properties() {
-    return {
-      hass: {},
-      _config: {}
-    };
-  }
+/****************************************************************************************
+ *  90MINUT MATCHES CARD — wersja v0.1_b (scalona)
+ *  Autor: GieOeRZet
+ *  Opis:  Custom card dla Home Assistant prezentująca mecze z 90minut.pl z logami i wynikami
+ *  
+ *  SEKCJE:
+ *   [1]  - REJESTRACJA ELEMENTU
+ *   [2]  - STYLIZACJA i TEMATY
+ *   [3]  - RENDEROWANIE KARTY
+ *   [4]  - FUNKCJE POMOCNICZE
+ *   [5]  - EDYTOR GUI (scalony)
+ *   [6]  - REJESTRACJA w HA (window.customCards)
+ ****************************************************************************************/
 
+class MatchesCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("matches-card-editor");
   }
 
   static getStubConfig() {
-    return { entity: "", show_logos: true, hover_enabled: false };
+    return {
+      entity: "sensor.90minut_gornik_zabrze_matches",
+      name: "90minut Matches",
+      show_logos: true,
+      show_competition_icon: true,
+      text_align: "left",
+      hover_effect: false,
+      hover_color: "#374df5",
+      column_widths: { date: 10, league: 10, logo: 10, teams: 50, score: 10, result: 10 },
+      font_sizes: { date: 14, teams: 15, score: 15, competition: 12 },
+    };
   }
 
   setConfig(config) {
-    if (!config.entity) throw new Error("Entity is required");
-    this._config = {
-      name: "90minut Matches",
-      show_logos: true,
-      hover_enabled: false,
-      hover_shadow_color: "rgba(0,0,0,0.2)",
-      alignment: "left",
-      font_size: 14,
-      column_widths: {
-        date: 12,
-        league: 8,
-        logo: 12,
-        score: 10,
-        result: 8
-      },
-      ...config
-    };
-    this.style.display = "block";
+    if (!config.entity) throw new Error("Musisz wybrać sensor!");
+    this.config = config;
   }
 
+  connectedCallback() {
+    this.render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (this.isConnected) this.render();
+  }
+
+  /*******************************************************
+   * [2] STYLIZACJA I TEMATY
+   *******************************************************/
   getCardSize() {
     return 4;
   }
 
   render() {
-    if (!this.hass) return;
-    const entity = this.hass.states[this._config.entity];
-    if (!entity) return this._createInfo("No data available");
-    const data = entity.attributes.matches || [];
+    if (!this._hass || !this.config) return;
 
-    if (data.length === 0)
-      return this._createInfo(
-        this._localize("card.no_data") || "No data available"
-      );
+    const entity = this._hass.states[this.config.entity];
+    if (!entity || !entity.attributes.matches) {
+      this.innerHTML = `<ha-card><div class="card-header">${this.config.name || entity?.attributes?.friendly_name || "90minut Matches"}</div><div class="card-content">Brak danych</div></ha-card>`;
+      return;
+    }
 
-    const style = this._getStyle();
+    const matches = entity.attributes.matches || [];
+    const styles = `
+      <style>
+        ha-card {
+          padding: 8px;
+          border-radius: var(--ha-card-border-radius, 12px);
+          background: var(--card-background-color, var(--ha-card-background, #fff));
+          color: var(--primary-text-color);
+          transition: box-shadow 0.2s ease;
+        }
+        .match-row {
+          display: grid;
+          grid-template-columns: ${this.config.column_widths.date}% ${this.config.column_widths.league}% ${this.config.column_widths.logo}% ${this.config.column_widths.teams}% ${this.config.column_widths.score}% ${this.config.column_widths.result}%;
+          align-items: center;
+          padding: 6px 0;
+          border-bottom: 1px solid var(--divider-color, rgba(100,100,100,0.2));
+          transition: all 0.2s ease;
+        }
+        .match-row:hover {
+          ${this.config.hover_effect ? `box-shadow: 0 0 6px ${this.config.hover_color};` : ""}
+          border-radius: 8px;
+        }
+        .match-date, .match-league, .match-score, .match-result {
+          text-align: center;
+          font-size: var(--font-size, 14px);
+        }
+        .match-teams {
+          text-align: ${this.config.text_align};
+          font-size: ${this.config.font_sizes.teams}px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+        .team-name.bold { font-weight: 700; }
+        .team-logo {
+          width: 28px;
+          height: 28px;
+          object-fit: contain;
+          margin: auto;
+        }
+        .result-icon {
+          font-weight: bold;
+          color: white;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin: auto;
+        }
+        .result-icon.win { background: var(--success-color, #0bb32a); }
+        .result-icon.draw { background: var(--neutral-color, #9a9a9a); }
+        .result-icon.loss { background: var(--error-color, #cb1818); }
+        .league-icon {
+          width: 26px;
+          height: 26px;
+          margin: auto;
+        }
+      </style>
+    `;
 
-    const rows = data.map((match) => {
-      const isFinished = match.finished;
-      const res = match.result;
-      const resultColor =
-        res === "win"
-          ? "var(--color-win, #0bb32a)"
-          : res === "loss"
-          ? "var(--color-loss, #cb1818)"
-          : res === "draw"
-          ? "var(--color-draw, #a4a9b3)"
-          : "var(--secondary-text-color)";
+    const rows = matches.map(m => {
+      const resultClass = m.result === "win" ? "win" : m.result === "draw" ? "draw" : "loss";
+      const resultLetter = m.result === "win" ? "W" : m.result === "draw" ? "R" : "P";
 
       return `
-        <div class="match-row ${this._config.hover_enabled ? "hoverable" : ""}">
-          <div class="col date">${match.date || ""}</div>
-          <div class="col league"><img class="league-icon" src="${
-            match.league === "L"
-              ? "https://img.sofascore.com/api/v1/unique-tournament/202/image"
-              : "https://img.sofascore.com/api/v1/unique-tournament/281/image"
-          }"></div>
-          <div class="col logo">
-            ${
-              this._config.show_logos
-                ? `<img class="team-logo" src="${match.logo_home || ""}" />`
-                : ""
-            }
+        <div class="match-row">
+          <div class="match-date">${m.date}</div>
+          <div class="match-league">
+            ${this.config.show_competition_icon ? `<img src="${m.league === "PP"
+              ? "https://img.sofascore.com/api/v1/unique-tournament/281/image"
+              : "https://img.sofascore.com/api/v1/unique-tournament/202/image"}" class="league-icon">` : ""}
           </div>
-          <div class="col teams" style="text-align: ${this._config.alignment}">
-            <div class="home" style="${
-              match.result === "win" && match.home === "Górnik Zabrze"
-                ? "font-weight:700"
-                : ""
-            }">${match.home}</div>
-            <div class="away" style="${
-              match.result === "win" && match.away === "Górnik Zabrze"
-                ? "font-weight:700"
-                : ""
-            }">${match.away}</div>
+          <div class="match-logo">
+            ${this.config.show_logos && m.logo_home ? `<img src="${m.logo_home}" class="team-logo">` : ""}
           </div>
-          <div class="col score">
-            <div>${match.score && match.score !== "-" ? match.score : ""}</div>
+          <div class="match-teams">
+            <div class="team-name ${m.result === "win" ? "bold" : ""}">${m.home}</div>
+            <div class="team-name ${m.result === "loss" ? "bold" : ""}">${m.away}</div>
           </div>
-          <div class="col result">
-            ${
-              isFinished && res
-                ? `<div class="result-icon" style="background-color:${resultColor}">
-                     <span>${res.charAt(0).toUpperCase()}</span>
-                   </div>`
-                : ""
-            }
+          <div class="match-score">
+            <div>${m.score}</div>
           </div>
-        </div>`;
-    });
+          <div class="match-result">
+            <div class="result-icon ${resultClass}">${resultLetter}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
 
-    return `
+    this.innerHTML = `
       <ha-card>
-        <div class="card-header">${this._config.name}</div>
-        <div class="matches-table">${rows.join("")}</div>
-        <style>${style}</style>
+        <div class="card-header">${this.config.name || entity.attributes.friendly_name}</div>
+        ${styles}
+        <div class="card-content">${rows}</div>
       </ha-card>
     `;
   }
+}
 
-  _createInfo(text) {
-    return `<ha-card><div class="card-content">${text}</div></ha-card>`;
+/*********************************************************
+ * [5] EDYTOR GUI (INLINE)
+ *********************************************************/
+
+class MatchesCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = config;
+    this.render();
   }
 
-  _getStyle() {
-    const c = this._config.column_widths;
-    const hoverShadow = this._config.hover_shadow_color;
-    const fs = this._config.font_size;
+  render() {
+    if (!this._config) return;
+    this.innerHTML = `
+      <div class="card-config">
+        <ha-entity-picker
+          label="Sensor"
+          .value="${this._config.entity || ""}"
+          include-domains='["sensor"]'
+          @value-changed=${e => this._valueChanged(e, "entity")}>
+        </ha-entity-picker>
 
-    return `
-      ha-card {
-        padding: 8px 0;
-        font-size: ${fs}px;
-      }
-      .matches-table {
-        display: flex;
-        flex-direction: column;
-      }
-      .match-row {
-        display: grid;
-        grid-template-columns: ${c.date}% ${c.league}% ${c.logo}% auto ${c.score}% ${c.result}%;
-        align-items: center;
-        padding: 6px 10px;
-        border-bottom: 1px solid var(--divider-color);
-        transition: box-shadow 0.2s ease, background 0.2s ease;
-      }
-      .match-row.hoverable:hover {
-        background: var(--ha-card-background, rgba(0,0,0,0.05));
-        box-shadow: 0 2px 8px ${hoverShadow};
-      }
-      .col {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
-      .col.logo, .col.league, .col.result, .col.score {
-        align-items: center;
-      }
-      .league-icon {
-        width: 24px;
-        height: 24px;
-      }
-      .team-logo {
-        width: 28px;
-        height: 28px;
-        border-radius: 4px;
-        object-fit: contain;
-      }
-      .result-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-      }
-      .home, .away {
-        line-height: 1.3;
-      }
+        <paper-input label="Nazwa karty" value="${this._config.name || ""}"
+          @value-changed=${e => this._valueChanged(e, "name")}></paper-input>
+
+        <ha-switch
+          .checked=${this._config.show_logos}
+          @change=${e => this._valueChanged(e, "show_logos")}>Pokaż herby</ha-switch>
+
+        <ha-switch
+          .checked=${this._config.hover_effect}
+          @change=${e => this._valueChanged(e, "hover_effect")}>Efekt hover</ha-switch>
+
+        <paper-input label="Kolor efektu hover" value="${this._config.hover_color || "#374df5"}"
+          @value-changed=${e => this._valueChanged(e, "hover_color")}></paper-input>
+
+        <paper-dropdown-menu label="Wyrównanie nazw drużyn">
+          <paper-listbox slot="dropdown-content"
+            selected="${["left","center","right"].indexOf(this._config.text_align || "left")}"
+            @selected-changed=${e => this._valueChanged({detail:{value:["left","center","right"][e.detail.value]}}, "text_align")}>
+            <paper-item>left</paper-item>
+            <paper-item>center</paper-item>
+            <paper-item>right</paper-item>
+          </paper-listbox>
+        </paper-dropdown-menu>
+      </div>
     `;
   }
 
-  _localize(key) {
-    const lang = (this.hass?.language || "en").split("-")[0];
-    const translations =
-      MatchesCard.translations?.[lang] || MatchesCard.translations?.en;
-    return translations?.card?.[key] || key;
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-    this.innerHTML = this.render();
+  _valueChanged(ev, prop) {
+    if (!this._config || !this.dispatchEvent) return;
+    const value = ev.detail?.value ?? ev.target?.value ?? ev.target?.checked;
+    if (this._config[prop] === value) return;
+    const newConfig = { ...this._config, [prop]: value };
+    this._config = newConfig;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig } }));
   }
 }
 
+/*********************************************************
+ * [6] REJESTRACJA ELEMENTÓW W HOME ASSISTANT
+ *********************************************************/
+
 customElements.define("matches-card", MatchesCard);
+customElements.define("matches-card-editor", MatchesCardEditor);
+
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "matches-card",
+  name: "90minut Matches Card",
+  description: "Karta pokazująca mecze z 90minut.pl z logami, wynikami i trybem edycji GUI"
+});

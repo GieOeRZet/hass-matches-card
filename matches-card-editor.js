@@ -1,6 +1,6 @@
 /*********************************************************************
  *  MATCHES CARD EDITOR
- *  GUI edytor dla Matches Card (v0.2_b)
+ *  GUI edytor dla Matches Card (v0.1.001)
  *********************************************************************/
 
 const LitElement = customElements.get("hui-text-element")?.prototype.__proto__.__proto__.constructor;

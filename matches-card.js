@@ -1,244 +1,140 @@
-/******************************************************************************************
- * 90minut Matches Card – v0.9.6_gui-labeled
- * Autor: Roman & ChatGPT
- * Opis: Karta Home Assistant prezentująca mecze z 90minut.pl w stylu Sofascore.
- * Wersja: GUI z pełnym bindowaniem, zebrowaniem, natywnym entity pickerem i opisami sekcji.
- ******************************************************************************************/
+/**********************************************************************
+ * Matches Card v1.1-tableGrid-GUI
+ * Autor: Roman + GPT-5
+ * Opis:
+ *  Nowoczesna karta wyników meczów w stylu Sofascore.
+ *  Układ 6 kolumn × 2 wiersze (CSS Grid) z pełnym GUI w HA.
+ *
+ *  Struktura siatki:
+ *  ┌─────────────────────────────────────────────────────────────┐
+ *  │ 1: Data/Koniec | 2: Logo ligi | 3a,b: Herby | 4a,b: Drużyny │
+ *  │ 5a,b: Wyniki | 6: Symbol W/P/R                               │
+ *  └─────────────────────────────────────────────────────────────┘
+ **********************************************************************/
 
-// ============================================================================
-// SEKCJA 1: Rejestracja karty dla Home Assistant (aby była widoczna jak natywna)
-// ============================================================================
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "matches-card",
-  name: "90minut Matches",
-  description: "Wyświetla mecze drużyny z 90minut.pl w stylu Sofascore",
-  preview: true
-});
-
-// ============================================================================
-// SEKCJA 2: Definicja głównej klasy karty
-// ============================================================================
 class MatchesCard extends HTMLElement {
   setConfig(config) {
-    if (!config.entity) throw new Error("Entity is required");
-
-    // Domyślna konfiguracja
-    this.config = {
-      name: config.name || "90minut Matches",
-      entity: config.entity,
-      show_logos: config.show_logos ?? true,
-      full_team_names: config.full_team_names ?? true,
-      font_size: config.font_size || {
-        date: 0.9,
-        teams: 1.0,
-        score: 1.0,
-        status: 0.8,
-        result_letter: 1.0,
-      },
-      icon_size: config.icon_size || {
-        league: 22,
-        crest: 20,
-        result: 22,
-      },
-      columns_pct: config.columns_pct || {
-        date: 15,
-        league: 10,
-        crest: 10,
-        score: 10,
-        result: 7,
-      },
-      colors: config.colors || {
-        win: "#3ba55d",
-        loss: "#e23b3b",
-        draw: "#468cd2",
-      },
+    if (!config.entity) throw new Error("⚠️ Wybierz sensor z listą meczów.");
+    this._config = {
+      name: "",
+      show_logos: true,
+      full_team_names: true,
+      font_size: { date: 0.9, teams: 1, score: 1, status: 0.8, result_letter: 1 },
+      icon_size: { league: 26, crest: 22, result: 26 },
+      columns_pct: { date: 14, league: 8, crest: 10, score: 8, result: 6 },
+      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
+      ...config,
     };
   }
 
   set hass(hass) {
-    this._hass = hass;
-    const entity = hass.states[this.config.entity];
+    const entity = hass.states[this._config.entity];
     if (!entity) return;
-
     const matches = entity.attributes.matches || [];
-
-    // ========================================================================
-    // SEKCJA 3: Tworzenie struktury HTML karty
-    // ========================================================================
     this.innerHTML = `
-      <ha-card header="${this.config.name}">
-        <style>
-          :host {
-            display: block;
-            font-family: var(--primary-font-family, "Sofascore Sans", sans-serif);
-          }
-          .match-row {
-            display: flex;
-            align-items: center;
-            padding: 6px 10px;
-            border-bottom: 1px solid var(--divider-color, rgba(130,130,130,0.2));
-            background: var(--ha-card-background, var(--card-background-color));
-          }
-          .match-row:nth-child(even) {
-            background-color: rgba(0,0,0,0.05);
-          }
-          .col {
-            text-align: center;
-          }
-          .team-names {
-            flex-direction: column;
-            justify-content: center;
-            align-items: flex-start;
-            display: flex;
-            text-align: left;
-          }
-          .team-names div {
-            line-height: 1.1em;
-          }
-          .team-logos {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 2px;
-          }
-          img.league-icon {
-            height: ${this.config.icon_size.league}px;
-          }
-          img.crest {
-            height: ${this.config.icon_size.crest}px;
-          }
-          .result-circle {
-            width: ${this.config.icon_size.result}px;
-            height: ${this.config.icon_size.result}px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-          }
-        </style>
-
-        <div class="matches-list">
-          ${matches.map((m, i) => {
-            const bg = i % 2 === 0 ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.05)";
-            const resultColor =
-              m.result === "win"
-                ? this.config.colors.win
-                : m.result === "loss"
-                ? this.config.colors.loss
-                : this.config.colors.draw;
-
-            return `
-              <div class="match-row" style="background:${bg}">
-                <div class="col" style="width:${this.config.columns_pct.date}%;">${m.date}</div>
-                <div class="col" style="width:${this.config.columns_pct.league}%;">
-                  <img class="league-icon" src="${
-                    m.league === "PP"
-                      ? "https://img.sofascore.com/api/v1/unique-tournament/281/image"
-                      : "https://img.sofascore.com/api/v1/unique-tournament/202/image"
-                  }">
-                </div>
-                <div class="col team-logos" style="width:${this.config.columns_pct.crest}%;">
-                  ${this.config.show_logos ? `<img class="crest" src="${m.logo_home || ''}"><img class="crest" src="${m.logo_away || ''}">` : ""}
-                </div>
-                <div class="col team-names" style="width:${100 - (this.config.columns_pct.date + this.config.columns_pct.league + this.config.columns_pct.crest + this.config.columns_pct.score + this.config.columns_pct.result)}%;">
-                  <div style="font-size:${this.config.font_size.teams}em;">${m.home}</div>
-                  <div style="font-size:${this.config.font_size.teams}em;">${m.away}</div>
-                </div>
-                <div class="col" style="width:${this.config.columns_pct.score}%;">
-                  <div style="font-size:${this.config.font_size.score}em;">${m.score}</div>
-                </div>
-                <div class="col" style="width:${this.config.columns_pct.result}%;">
-                  <div class="result-circle" style="background:${resultColor}">
-                    ${m.result ? m.result[0].toUpperCase() : ""}
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join("")}
+      <ha-card>
+        ${this._config.name ? `<h1 class="card-header">${this._config.name}</h1>` : ""}
+        <div class="matches-container">
+          ${matches.map((match, i) => this._renderMatch(match, i)).join("")}
         </div>
       </ha-card>
     `;
   }
 
-  getCardSize() {
-    return 3;
+  // ===========================================================
+  // Render pojedynczego meczu
+  // ===========================================================
+  _renderMatch(match, index) {
+    const isFinished = match.finished;
+    const date = new Date(match.date);
+    const dateStr = date.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "2-digit" });
+    const timeStr = isFinished ? "Koniec" : date.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+
+    const resultColor = {
+      win: this._config.colors?.win || "#3ba55d",
+      loss: this._config.colors?.loss || "#e23b3b",
+      draw: this._config.colors?.draw || "#468cd2",
+    }[match.result] || "#888";
+
+    const cw = this._config.columns_pct || {};
+    const colWidths = [
+      (cw.date || 14) + "%",
+      (cw.league || 8) + "%",
+      (cw.crest || 10) + "%",
+      "auto",
+      (cw.score || 8) + "%",
+      (cw.result || 6) + "%",
+    ].join(" ");
+
+    const zebra = index % 2 === 0 ? "even" : "odd";
+
+    return `
+      <div class="match-block ${zebra}" style="grid-template-columns: ${colWidths};">
+        <!-- 1️⃣ Data -->
+        <div class="cell date" style="grid-row: span 2;">
+          <div>${dateStr}</div>
+          <div>${timeStr}</div>
+        </div>
+
+        <!-- 2️⃣ Liga -->
+        <div class="cell league" style="grid-row: span 2;">
+          ${match.league === "L"
+            ? `<img src="https://img.sofascore.com/api/v1/unique-tournament/202/image" alt="Liga">`
+            : `<img src="https://img.sofascore.com/api/v1/unique-tournament/281/image" alt="PP">`}
+        </div>
+
+        <!-- 3️⃣ Herby -->
+        <div class="cell crest home">${match.logo_home ? `<img src="${match.logo_home}" alt="${match.home}">` : ""}</div>
+        <div class="cell crest away">${match.logo_away ? `<img src="${match.logo_away}" alt="${match.away}">` : ""}</div>
+
+        <!-- 4️⃣ Nazwy -->
+        <div class="cell team home"><span>${match.home}</span></div>
+        <div class="cell team away"><span>${match.away}</span></div>
+
+        <!-- 5️⃣ Wynik -->
+        <div class="cell score home">${match.score ? match.score.split("-")[0] : "-"}</div>
+        <div class="cell score away">${match.score ? match.score.split("-")[1] : "-"}</div>
+
+        <!-- 6️⃣ Symbol W/P/R -->
+        <div class="cell result" style="grid-row: span 2; color:${resultColor};">
+          <div class="result-icon">${match.result ? match.result.toUpperCase()[0] : "-"}</div>
+        </div>
+      </div>
+    `;
   }
 
-  static getStubConfig() {
-    return {
-      entity: "sensor.90minut_gornik_zabrze_matches",
-    };
+  // ===========================================================
+  // Style
+  // ===========================================================
+  static get styles() {
+    return `
+      ha-card { padding: 0.5em; }
+      .card-header { margin: 0.3em 0.8em; font-size: 1.1em; font-weight: bold; }
+      .matches-container { display: flex; flex-direction: column; gap: 0.3em; }
+
+      .match-block {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        align-items: center;
+        border-radius: 8px;
+        padding: 0.4em 0.6em;
+        background-color: var(--ha-card-background, #1e1e1e);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+      }
+      .match-block.even { background-color: rgba(255,255,255,0.04); }
+      .match-block.odd  { background-color: rgba(255,255,255,0.08); }
+
+      .cell { display: flex; justify-content: center; align-items: center; }
+      .cell.team { justify-content: flex-start; }
+      .cell img { height: 22px; max-width: 24px; object-fit: contain; }
+      .cell.date div { font-size: 0.85em; text-align: center; }
+      .result-icon { font-weight: bold; font-size: 1.2em; }
+    `;
+  }
+
+  getCardSize() {
+    return 5;
   }
 }
 
 customElements.define("matches-card", MatchesCard);
-
-// ============================================================================
-// SEKCJA 4: GUI KONFIGURATORA (pełne bindowanie i entity-picker)
-// ============================================================================
-class MatchesCardEditor extends LitElement {
-  static get properties() {
-    return { hass: {}, _config: {} };
-  }
-
-  setConfig(config) {
-    this._config = config;
-  }
-
-  _valueChanged(ev) {
-    if (!this._config || !this.hass) return;
-    const target = ev.target;
-    const value = target.checked ?? target.value;
-    const key = target.dataset.config;
-    if (key) {
-      this._config = { ...this._config, [key]: value };
-      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
-    }
-  }
-
-  render() {
-    if (!this._config) return html``;
-    return html`
-      <ha-form>
-        <ha-entity-picker
-          label="Sensor"
-          .hass=${this.hass}
-          .value=${this._config.entity}
-          .configValue=${"entity"}
-          include-domains="sensor"
-          @value-changed=${this._valueChanged}>
-        </ha-entity-picker>
-
-        <ha-textfield
-          label="Nazwa karty"
-          .value=${this._config.name || ""}
-          data-config="name"
-          @input=${this._valueChanged}>
-        </ha-textfield>
-
-        <ha-switch
-          .checked=${this._config.show_logos !== false}
-          data-config="show_logos"
-          @change=${this._valueChanged}>
-          Pokaż herby
-        </ha-switch>
-
-        <ha-switch
-          .checked=${this._config.full_team_names !== false}
-          data-config="full_team_names"
-          @change=${this._valueChanged}>
-          Pełne nazwy drużyn
-        </ha-switch>
-      </ha-form>
-    `;
-  }
-}
-customElements.define("matches-card-editor", MatchesCardEditor);
-window.customElements.whenDefined("hui-view").then(() => {
-  window.customCards = window.customCards || [];
-  window.customCards.push({ type: "matches-card", editor: "matches-card-editor" });
-});

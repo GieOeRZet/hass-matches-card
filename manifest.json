@@ -1,17 +1,13 @@
 {
+
   "name": "90minut Matches Card",
-  "render_readme": true,
   "filename": "matches-card.js",
+  "render_readme": true,
+  "gui_editor": true,
+  "description": "Custom Lovelace card for Home Assistant showing football matches from 90minut.pl",
+  "version": "v0.1_b2",
   "domain": "matches_card",
+  "codeowners": ["@GieOeRZet"]
   "country": "PL",
   "hacs": "1.0.0",
-  "type": "module",
-  "resources": [
-    {
-      "type": "module",
-      "url": "/hacsfiles/matches-card/matches-card.js"
-    }
-  ],
-  "version": "v0.1_b",
-  "description": "Karta 90minut.pl do Home Assistant z obsługą GUI i hover effect"
 }

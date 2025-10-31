@@ -1,23 +1,26 @@
 {
-  "domain": "matches_card",
-  "name": "90minut Matches Card",
-  "version": "0.9.6_gui-labeled",
-  "documentation": "https://github.com/gieoerzet/matches-card",
-  "issue_tracker": "https://github.com/gieoerzet/matches-card/issues",
-  "type": "module",
-  "render_readme": true,
+  "name": "Matches Card",
+  "filename": "matches-card.js",
   "resources": [
     {
-      "type": "module",
-      "url": "/hacsfiles/matches-card/matches-card.js"
+      "file": "matches-card.js",
+      "type": "module"
+    },
+    {
+      "file": "matches-card-editor.js",
+      "type": "module"
     }
   ],
-  "custom_cards": [
-    {
-      "type": "matches-card",
-      "name": "90minut Matches",
-      "description": "Wyświetla mecze drużyny z 90minut.pl w stylu Sofascore",
-      "preview": true
-    }
-  ]
+  "version": "1.1-tableGrid-GUI",
+  "domain": "matches-card",
+  "render_readme": true,
+  "homeassistant": "2024.8.0",
+  "hide_default_branch": true,
+  "iot_class": "local_polling",
+  "documentation": "https://github.com/gieoerzet/matches-card",
+  "issue_tracker": "https://github.com/gieoerzet/matches-card/issues",
+  "requirements": [],
+  "codeowners": ["@gieoerzet"],
+  "integration_type": "helper",
+  "gui": true
 }

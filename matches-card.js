@@ -1,13 +1,8 @@
 /********************************************************************************************
- * 90MINUT MATCHES CARD — v0.9_gui-final-debug
- * Author: GieOeRZet
- *
- * ✅ Pełny układ 1–6 kolumn (Data | Liga | Herb | Drużyny | Wynik | Rezultat)
- * ✅ Zebra i poziome linie
- * ✅ Procentowa szerokość kolumn (bez automatycznych wyliczeń)
- * ✅ 4 warianty entity-picker do testu
+ * 90MINUT MATCHES CARD — v0.9.5_gui-rework
+ * Pełne GUI (dwukierunkowe bindowanie, działające pola, pickery testowe)
+ * Sofascore style: zebra, poziome linie, osobne kolumny, 2 herby.
  ********************************************************************************************/
-
 import { LitElement, html, css } from "https://unpkg.com/lit-element/lit-element.js?module";
 
 /* =========================== [ GUI EDITOR ] =========================== */
@@ -15,14 +10,16 @@ class MatchesCardEditor extends LitElement {
   static get properties() {
     return { hass: {}, config: {} };
   }
-
   setConfig(config) {
     this.config = config;
   }
 
-  _update(path, value) {
-    const newConfig = { ...this.config };
-    newConfig[path] = value;
+  _updateConfig(path, value) {
+    const newConfig = JSON.parse(JSON.stringify(this.config || {}));
+    const pathParts = path.split(".");
+    let target = newConfig;
+    while (pathParts.length > 1) target = target[pathParts.shift()] ||= {};
+    target[pathParts[0]] = value;
     this.config = newConfig;
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig } }));
   }
@@ -32,89 +29,101 @@ class MatchesCardEditor extends LitElement {
     const c = this.config || {};
 
     return html`
-      <h3>🎯 TEST PICKERÓW (wszystkie ustawiają to samo pole "entity")</h3>
+      <div class="section">
+        <h3>📊 Wybór sensora (test 4 warianty pickera)</h3>
+        <div class="row">
+          <ha-entity-picker
+            label="Picker #1"
+            .hass=${this.hass}
+            .value=${c.entity || ""}
+            include-domains='["sensor"]'
+            @value-changed=${(e) => this._updateConfig("entity", e.detail.value)}>
+          </ha-entity-picker>
+          <ha-entity-picker
+            label="Picker #2 (allow-custom)"
+            .hass=${this.hass}
+            .value=${c.entity || ""}
+            allow-custom-entity
+            @value-changed=${(e) => this._updateConfig("entity", e.detail.value)}>
+          </ha-entity-picker>
+        </div>
+      </div>
 
-      <ha-entity-picker
-        .hass=${this.hass}
-        label="Picker #1 – standardowy"
-        .value=${c.entity || ""}
-        include-domains='["sensor"]'
-        @value-changed=${(e) => this._update("entity", e.detail.value)}>
-      </ha-entity-picker>
+      <div class="section">
+        <h3>⚙️ Wygląd i opcje</h3>
+        <div class="row switches">
+          <div class="switch">
+            <ha-switch
+              .checked=${c.show_logos ?? true}
+              @change=${(e) => this._updateConfig("show_logos", e.target.checked)}>
+            </ha-switch>
+            <label>Pokaż herby</label>
+          </div>
+          <div class="switch">
+            <ha-switch
+              .checked=${c.full_team_names ?? true}
+              @change=${(e) => this._updateConfig("full_team_names", e.target.checked)}>
+            </ha-switch>
+            <label>Pełne nazwy drużyn</label>
+          </div>
+        </div>
+        <ha-textfield
+          label="Nazwa karty"
+          .value=${c.name || ""}
+          @input=${(e) => this._updateConfig("name", e.target.value)}>
+        </ha-textfield>
+      </div>
 
-      <ha-entity-picker
-        .hass=${this.hass}
-        label="Picker #2 – z allow-custom-entity"
-        .value=${c.entity || ""}
-        allow-custom-entity
-        include-domains='["sensor"]'
-        @value-changed=${(e) => this._update("entity", e.detail.value)}>
-      </ha-entity-picker>
+      <div class="section">
+        <h3>📏 Szerokości kolumn (%)</h3>
+        <div class="grid">
+          ${["date", "league", "crest", "score", "result"].map(
+            (k) => html`
+              <ha-textfield
+                type="number"
+                label="${k}"
+                .value=${c.columns_pct?.[k] ?? ""}
+                @input=${(e) =>
+                  this._updateConfig(`columns_pct.${k}`, Number(e.target.value))}>
+              </ha-textfield>
+            `
+          )}
+        </div>
+      </div>
 
-      <ha-entity-picker
-        .hass=${this.hass}
-        label="Picker #3 – bez include-domains"
-        .value=${c.entity || ""}
-        @value-changed=${(e) => this._update("entity", e.detail.value)}>
-      </ha-entity-picker>
+      <div class="section">
+        <h3>🔠 Rozmiary czcionek (em)</h3>
+        <div class="grid">
+          ${["date", "teams", "score", "status", "result_letter"].map(
+            (k) => html`
+              <ha-textfield
+                type="number"
+                label="${k}"
+                .value=${c.font_size?.[k] ?? ""}
+                @input=${(e) =>
+                  this._updateConfig(`font_size.${k}`, Number(e.target.value))}>
+              </ha-textfield>
+            `
+          )}
+        </div>
+      </div>
 
-      <ha-entity-picker
-        .hass=${this.hass}
-        label="Picker #4 – z domain 'sensor' jako tekst"
-        .value=${c.entity || ""}
-        .includeDomains=${["sensor"]}
-        @value-changed=${(e) => this._update("entity", e.detail.value)}>
-      </ha-entity-picker>
-
-      <ha-textfield
-        label="Nazwa karty"
-        .value=${c.name || ""}
-        @input=${(e) => this._update("name", e.target.value)}>
-      </ha-textfield>
-
-      <ha-switch
-        .checked=${c.show_logos ?? true}
-        @change=${(e) => this._update("show_logos", e.target.checked)}>
-        Pokaż herby
-      </ha-switch>
-
-      <ha-switch
-        .checked=${c.full_team_names ?? true}
-        @change=${(e) => this._update("full_team_names", e.target.checked)}>
-        Pełne nazwy drużyn
-      </ha-switch>
-
-      <h4>Szerokości kolumn (%)</h4>
-      ${["date", "league", "crest", "teams", "score", "result"].map(
-        (k) => html`
-          <ha-textfield
-            type="number"
-            label="${k}"
-            .value=${c.columns_pct?.[k] ?? ""}
-            @input=${(e) =>
-              this._update("columns_pct", {
-                ...c.columns_pct,
-                [k]: Number(e.target.value),
-              })}>
-          </ha-textfield>
-        `
-      )}
-
-      <h4>Rozmiary czcionek (em)</h4>
-      ${["date", "teams", "score", "status", "result_letter"].map(
-        (k) => html`
-          <ha-textfield
-            type="number"
-            label="${k}"
-            .value=${c.font_size?.[k] ?? ""}
-            @input=${(e) =>
-              this._update("font_size", {
-                ...c.font_size,
-                [k]: Number(e.target.value),
-              })}>
-          </ha-textfield>
-        `
-      )}
+      <div class="section">
+        <h3>🏆 Wielkości ikon (px)</h3>
+        <div class="grid">
+          ${["league", "crest", "result"].map(
+            (k) => html`
+              <ha-textfield
+                type="number"
+                label="${k}"
+                .value=${c.icon_size?.[k] ?? ""}
+                @input=${(e) =>
+                  this._updateConfig(`icon_size.${k}`, Number(e.target.value))}>
+              </ha-textfield>
+            `
+          )}
+        </div>
+      </div>
     `;
   }
 
@@ -122,38 +131,48 @@ class MatchesCardEditor extends LitElement {
     return css`
       :host {
         display: block;
-        padding-bottom: 12px;
-      }
-      ha-textfield,
-      ha-select {
-        width: 100%;
-        margin-top: 6px;
-      }
-      ha-switch {
-        display: flex;
-        align-items: center;
-        margin: 6px 0;
+        padding: 10px;
       }
       h3 {
         color: var(--primary-color);
         margin: 12px 0 6px;
+      }
+      .section {
+        border-bottom: 1px solid var(--divider-color);
+        padding-bottom: 12px;
+        margin-bottom: 10px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+      }
+      ha-switch + label {
+        margin-left: 6px;
+        user-select: none;
+      }
+      .switch {
+        display: flex;
+        align-items: center;
+        gap: 4px;
       }
     `;
   }
 }
 customElements.define("matches-card-editor", MatchesCardEditor);
 
-/* =========================== [ GŁÓWNA KARTA ] =========================== */
-
+/* =========================== [ KARTA ] =========================== */
 class MatchesCard extends LitElement {
   static get properties() {
     return { hass: {}, config: {} };
   }
-
   static getConfigElement() {
     return document.createElement("matches-card-editor");
   }
-
   static getStubConfig() {
     return {
       entity: "",
@@ -161,11 +180,11 @@ class MatchesCard extends LitElement {
       show_logos: true,
       full_team_names: true,
       font_size: { date: 0.9, teams: 1, score: 1, status: 0.8, result_letter: 1 },
-      columns_pct: { date: 15, league: 10, crest: 10, teams: 35, score: 15, result: 15 },
+      icon_size: { league: 24, crest: 24, result: 24 },
+      columns_pct: { date: 15, league: 10, crest: 10, score: 15, result: 10 },
       colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
     };
   }
-
   setConfig(config) {
     this.config = { ...MatchesCard.getStubConfig(), ...config };
   }
@@ -180,18 +199,17 @@ class MatchesCard extends LitElement {
       <ha-card>
         <div class="header">${title}</div>
         ${matches.length
-          ? matches.map((m, i) => this._renderRow(m, i, c))
+          ? matches.map((m, i) => this._renderRow(m, i))
           : html`<div class="no-data">Brak danych</div>`}
       </ha-card>
     `;
   }
 
-  _renderRow(m, i, c) {
-    const resClass =
-      m.result === "win" ? "win" : m.result === "draw" ? "draw" : m.result === "loss" ? "loss" : "";
+  _renderRow(m, i) {
+    const c = this.config;
     const resLetter =
       m.result === "win" ? "W" : m.result === "draw" ? "R" : m.result === "loss" ? "P" : "";
-
+    const resClass = m.result ?? "";
     const leagueIcon =
       m.league === "PP"
         ? "https://img.sofascore.com/api/v1/unique-tournament/281/image"
@@ -204,14 +222,12 @@ class MatchesCard extends LitElement {
           <div class="status">${m.finished ? "Koniec" : "Nadchodzi"}</div>
         </div>
         <div class="col league">
-          <img src="${leagueIcon}" width="24" height="24" />
+          <img src="${leagueIcon}" style="width:${c.icon_size.league}px" />
         </div>
         <div class="col crest">
-          ${c.show_logos && m.logo_home
-            ? html`<img src="${m.logo_home}" class="team-logo" />`
-            : ""}
-          ${c.show_logos && m.logo_away
-            ? html`<img src="${m.logo_away}" class="team-logo" />`
+          ${c.show_logos
+            ? html`<img src="${m.logo_home}" style="width:${c.icon_size.crest}px" />
+                <img src="${m.logo_away}" style="width:${c.icon_size.crest}px" />`
             : ""}
         </div>
         <div class="col teams">
@@ -220,7 +236,11 @@ class MatchesCard extends LitElement {
         </div>
         <div class="col score">${m.score || "-"}</div>
         <div class="col result">
-          ${resLetter ? html`<div class="result-icon ${resClass}">${resLetter}</div>` : ""}
+          ${resLetter
+            ? html`<div class="result-icon ${resClass}" style="width:${c.icon_size.result}px">
+                ${resLetter}
+              </div>`
+            : ""}
         </div>
       </div>
     `;
@@ -229,7 +249,7 @@ class MatchesCard extends LitElement {
   static get styles() {
     return css`
       ha-card {
-        border-radius: 12px;
+        border-radius: 10px;
         background: var(--card-background-color);
         color: var(--primary-text-color);
         padding: 8px;
@@ -241,10 +261,10 @@ class MatchesCard extends LitElement {
       }
       .row {
         display: grid;
-        grid-template-columns: 15% 10% 10% 35% 15% 15%;
+        grid-template-columns: 15% 10% 10% 40% 15% 10%;
         align-items: center;
-        padding: 8px 8px;
-        border-bottom: 1px solid rgba(var(--rgb-primary-text-color), 0.12);
+        padding: 6px 8px;
+        border-bottom: 1px solid rgba(var(--rgb-primary-text-color), 0.15);
       }
       .row:nth-child(odd) {
         background: rgba(var(--rgb-primary-text-color), 0.04);
@@ -261,23 +281,14 @@ class MatchesCard extends LitElement {
         flex-direction: column;
         line-height: 1.3em;
       }
-      .team-logo {
-        width: 24px;
-        height: 24px;
-        object-fit: contain;
-        margin: 1px 0;
-        border-radius: 4px;
-        background: white;
-      }
       .result-icon {
-        width: 24px;
-        height: 24px;
         border-radius: 50%;
-        color: white;
-        display: flex;
+        color: #fff;
+        text-align: center;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-weight: 600;
+        font-weight: bold;
       }
       .win {
         background: #3ba55d;
@@ -297,11 +308,3 @@ class MatchesCard extends LitElement {
   }
 }
 customElements.define("matches-card", MatchesCard);
-
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "matches-card",
-  name: "90minut Matches Card",
-  description:
-    "v0.9_gui-final-debug — oddzielne kolumny, zebra, linie, 4 pickery testowe, pełny GUI"
-});

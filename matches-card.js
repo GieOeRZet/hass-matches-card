@@ -1,10 +1,11 @@
 /********************************************************************************************
- * 90MINUT MATCHES CARD — v0.7_gui-stable
+ * 90MINUT MATCHES CARD — v0.8_gui-polished
  * Author: GieOeRZet
- * ✅ Pełny, działający GUI (LitElement)
- * ✅ Synchronizacja YAML <-> GUI
- * ✅ Naprzemienne tło i poziome separatory
- * ✅ Automatyczna szerokość kolumny ligi
+ *
+ * ✅ Stabilny, natywny GUI (ha-textfield, ha-switch, ha-entity-picker)
+ * ✅ Naprzemienne tło + subtelne linie
+ * ✅ Oddzielone kolumny HERB i DRUŻYNY
+ * ✅ Pełna synchronizacja GUI ↔ YAML
  ********************************************************************************************/
 
 import { LitElement, html, css } from "https://unpkg.com/lit-element/lit-element.js?module";
@@ -48,7 +49,7 @@ class MatchesCardEditor extends LitElement {
         label="Sensor (90minut)"
         .value=${c.entity || ""}
         allow-custom-entity
-        include-domains='["sensor"]'
+        include-domains=${["sensor"]}
         @value-changed=${(e) => this._update("entity", e.detail.value)}>
       </ha-entity-picker>
 
@@ -70,17 +71,8 @@ class MatchesCardEditor extends LitElement {
         Pełne nazwy drużyn
       </ha-switch>
 
-      <ha-select
-        label="Wyrównanie nazw drużyn"
-        .value=${c.team_align || "left"}
-        @selected=${(e) => this._update("team_align", e.target.value)}>
-        <mwc-list-item value="left">Lewo</mwc-list-item>
-        <mwc-list-item value="center">Środek</mwc-list-item>
-        <mwc-list-item value="right">Prawo</mwc-list-item>
-      </ha-select>
-
       <h4>Szerokości kolumn (%)</h4>
-      ${["date", "crest", "score", "result"].map(
+      ${["date", "crest", "teams", "score", "result"].map(
         (k) => html`
           <ha-textfield
             type="number"
@@ -149,9 +141,8 @@ class MatchesCard extends LitElement {
       name: "90minut Matches",
       show_logos: true,
       full_team_names: true,
-      team_align: "left",
       font_size: { date: 0.9, teams: 1, score: 1, status: 0.8, result_letter: 1 },
-      columns_pct: { date: 20, crest: 15, score: 14, result: 7 },
+      columns_pct: { date: 20, crest: 10, teams: 35, score: 14, result: 7 },
       colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" }
     };
   }
@@ -166,10 +157,14 @@ class MatchesCard extends LitElement {
     const matches = e?.attributes?.matches || [];
     const title = c.name || e?.attributes?.friendly_name || "90minut Matches";
 
-    // Automatyczna szerokość kolumny ligi
+    // Automatyczna szerokość kolumny "liga"
     const autoWidth =
       100 -
-      (c.columns_pct.date + c.columns_pct.crest + c.columns_pct.score + c.columns_pct.result);
+      (c.columns_pct.date +
+        c.columns_pct.crest +
+        c.columns_pct.teams +
+        c.columns_pct.score +
+        c.columns_pct.result);
 
     return html`
       <ha-card>
@@ -187,6 +182,10 @@ class MatchesCard extends LitElement {
     const resLetter =
       m.result === "win" ? "W" : m.result === "draw" ? "R" : m.result === "loss" ? "P" : "";
 
+    const leagueIcon = m.league === "PP"
+      ? "https://img.sofascore.com/api/v1/unique-tournament/281/image"
+      : "https://img.sofascore.com/api/v1/unique-tournament/202/image";
+
     return html`
       <div class="row">
         <div class="date">
@@ -194,11 +193,7 @@ class MatchesCard extends LitElement {
           <div class="status">${m.finished ? "Koniec" : "Nadchodzi"}</div>
         </div>
         <div class="league">
-          <img
-            src="https://img.sofascore.com/api/v1/unique-tournament/202/image"
-            width="24"
-            height="24"
-          />
+          <img src="${leagueIcon}" width="24" height="24" />
         </div>
         <div class="crest-col">
           ${c.show_logos && m.logo_home
@@ -235,7 +230,7 @@ class MatchesCard extends LitElement {
       }
       .row {
         display: grid;
-        grid-template-columns: 20% auto 15% auto 14% 7%;
+        grid-template-columns: 20% auto 10% 35% 14% 7%;
         align-items: center;
         padding: 6px 8px;
         border-bottom: 1px solid rgba(var(--rgb-primary-text-color), 0.1);
@@ -252,15 +247,14 @@ class MatchesCard extends LitElement {
         flex-direction: column;
         font-size: var(--font-size-date, 0.9em);
       }
-      .league,
-      .score,
-      .result {
+      .league {
         text-align: center;
       }
       .crest-col {
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
       }
       .team-logo {
         width: 24px;
@@ -271,7 +265,7 @@ class MatchesCard extends LitElement {
         background: white;
       }
       .teams {
-        text-align: var(--team-align, left);
+        text-align: left;
         display: flex;
         flex-direction: column;
         font-size: var(--font-size-teams, 1em);
@@ -280,6 +274,10 @@ class MatchesCard extends LitElement {
       .score {
         font-weight: 700;
         font-size: var(--font-size-score, 1em);
+        text-align: center;
+      }
+      .result {
+        text-align: center;
       }
       .result-icon {
         width: 24px;
@@ -314,5 +312,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "matches-card",
   name: "90minut Matches Card",
-  description: "Karta 90minut.pl w stylu Sofascore (GUI stable, zebra, auto width)"
+  description: "Karta 90minut.pl (v0.8_gui-polished) — oddzielne kolumny, pełny GUI, zebra, stabilna"
 });

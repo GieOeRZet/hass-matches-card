@@ -4,8 +4,8 @@
   "filename": "matches-card.js",
   "render_readme": true,
   "gui_editor": true,
-  "description": "Karta Sofascore dla meczów z 90minut.pl — dwa herby, hover, kolumny, GUI",
-  "version": "v0.4_sofascore",
+  "description": "Karta 90minut.pl z pełnym edytorem GUI zgodnym z frameworkiem Home Assistant 2025.",
+  "version": "v0.6_gui-modern",
   "domain": "matches_card",
   "codeowners": ["@GieOeRZet"]
 }

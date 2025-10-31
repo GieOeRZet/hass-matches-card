@@ -1,107 +1,69 @@
-/**********************************************************************
- * Matches Card - GUI Editor v1.1
- * Opis:
- *  Pełny edytor graficzny dla karty Matches Card.
- *  Umożliwia zmianę encji, nazw, czcionek, szerokości, kolorów itp.
- **********************************************************************/
+/*********************************************************************
+ *  MATCHES CARD EDITOR
+ *  GUI edytor dla Matches Card (v0.2_b)
+ *********************************************************************/
 
-class MatchesCardEditor extends HTMLElement {
+const LitElement = customElements.get("hui-text-element")?.prototype.__proto__.__proto__.constructor;
+const html = LitElement.prototype.html;
+
+class MatchesCardEditor extends LitElement {
+  static get properties() {
+    return { hass: {}, _config: {} };
+  }
+
   setConfig(config) {
-    this._config = config || {};
-    this.render();
+    this._config = config;
+  }
+
+  get value() {
+    return this._config;
   }
 
   render() {
-    this.innerHTML = `
+    if (!this._config) return html``;
+    return html`
       <div class="card-config">
-
-        <!-- === GŁÓWNE USTAWIENIA === -->
-        <h3>Ustawienia główne</h3>
         <ha-entity-picker
-          label="Sensor z meczami"
-          .value=${this._config.entity || ""}
-          allow-custom-entity
+          label="Sensor (tylko 90minut)"
+          .hass=${this.hass}
+          .value=${this._config.entity}
+          .configValue=${"entity"}
           domain-filter="sensor"
-          @value-changed=${(e) => this._updateConfig("entity", e.detail.value)}>
-        </ha-entity-picker>
+          @value-changed=${this._valueChanged}
+          allow-custom-entity
+        ></ha-entity-picker>
 
-        <ha-textfield
+        <paper-input
           label="Nazwa karty"
           .value=${this._config.name || ""}
-          @input=${(e) => this._updateConfig("name", e.target.value)}>
-        </ha-textfield>
+          .configValue=${"name"}
+          @value-changed=${this._valueChanged}
+        ></paper-input>
 
-        <div class="switches">
-          <ha-switch
-            .checked=${this._config.show_logos ?? true}
-            @change=${(e) => this._updateConfig("show_logos", e.target.checked)}>
-          </ha-switch><label>Pokaż herby</label>
+        <ha-switch
+          .checked=${this._config.show_logos ?? true}
+          .configValue=${"show_logos"}
+          @change=${this._valueChanged}
+        >Pokaż herby</ha-switch>
 
-          <ha-switch
-            .checked=${this._config.full_team_names ?? true}
-            @change=${(e) => this._updateConfig("full_team_names", e.target.checked)}>
-          </ha-switch><label>Pełne nazwy</label>
-        </div>
-
-        <!-- === SZEROKOŚCI KOLUMN === -->
-        <h3>Szerokości kolumn (%)</h3>
-        ${["date", "league", "crest", "score", "result"].map((k) => `
-          <ha-textfield
-            label="${k.toUpperCase()}"
-            type="number"
-            min="0"
-            max="40"
-            .value=${this._config.columns_pct?.[k] ?? ""}
-            @input=${(e) => this._updateNested("columns_pct", k, Number(e.target.value))}>
-          </ha-textfield>`).join("")}
-
-        <!-- === CZCIONKI === -->
-        <h3>Rozmiary czcionek (em)</h3>
-        ${["date", "teams", "score", "status", "result_letter"].map((k) => `
-          <ha-textfield
-            label="${k}"
-            type="number"
-            step="0.1"
-            .value=${this._config.font_size?.[k] ?? ""}
-            @input=${(e) => this._updateNested("font_size", k, Number(e.target.value))}>
-          </ha-textfield>`).join("")}
-
-        <!-- === KOLORY === -->
-        <h3>Kolory wyników</h3>
-        ${["win", "loss", "draw"].map((k) => `
-          <ha-color-picker
-            label="${k.toUpperCase()}"
-            .value=${this._config.colors?.[k] ?? ""}
-            @color-changed=${(e) => this._updateNested("colors", k, e.detail.value)}>
-          </ha-color-picker>`).join("")}
-
+        <ha-switch
+          .checked=${this._config.full_team_names ?? true}
+          .configValue=${"full_team_names"}
+          @change=${this._valueChanged}
+        >Pełne nazwy drużyn</ha-switch>
       </div>
     `;
   }
 
-  _updateConfig(prop, value) {
-    if (!this._config) return;
-    this._config = { ...this._config, [prop]: value };
-    this._fireConfigChanged();
+  _valueChanged(ev) {
+    if (!this._config || !this.hass) return;
+    const target = ev.target;
+    const value = target.checked ?? target.value;
+    const key = target.configValue;
+    if (this._config[key] === value) return;
+    this._config = { ...this._config, [key]: value };
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
   }
-
-  _updateNested(section, key, value) {
-    this._config[section] = { ...this._config[section], [key]: value };
-    this._fireConfigChanged();
-  }
-
-  _fireConfigChanged() {
-    const event = new CustomEvent("config-changed", { detail: { config: this._config } });
-    this.dispatchEvent(event);
-  }
-
-  set hass(hass) {}
 }
 
 customElements.define("matches-card-editor", MatchesCardEditor);
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "matches-card",
-  name: "Matches Card",
-  description: "Karta wyników meczów w stylu Sofascore (z GUI)",
-});

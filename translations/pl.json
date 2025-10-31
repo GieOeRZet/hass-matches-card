@@ -1,0 +1,25 @@
+{
+  "editor": {
+    "entity": "Encja (sensor)",
+    "name": "Tytuł karty",
+    "show_logos": "Pokaż herby drużyn",
+    "hover_enabled": "Włącz efekt podświetlenia (hover)",
+    "hover_shadow_color": "Kolor cienia przy podświetleniu",
+    "alignment": "Wyrównanie nazw drużyn",
+    "alignment_left": "Lewo",
+    "alignment_center": "Środek",
+    "alignment_right": "Prawo",
+    "font_size": "Rozmiar czcionki (px)",
+    "column_widths": "Szerokości kolumn (%)",
+    "column_date": "Data – szerokość kolumny",
+    "column_league": "Liga – szerokość kolumny",
+    "column_logo": "Herb – szerokość kolumny",
+    "column_score": "Wynik – szerokość kolumny",
+    "column_result": "Ikona W/P/R – szerokość kolumny"
+  },
+  "card": {
+    "no_data": "Brak danych",
+    "loading": "Ładowanie meczów...",
+    "title_default": "90minut – Mecze"
+  }
+}

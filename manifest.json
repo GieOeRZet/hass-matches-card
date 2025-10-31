@@ -1,18 +1,16 @@
 {
-  "domain": "matches_card",
   "name": "Matches Card",
-  "version": "0.1.003",
-  "documentation": "https://github.com/gieoerzet/matches-card",
-  "requirements": [],
-  "codeowners": ["@gieoerzet"],
+  "render_readme": false,
+  "filename": "matches-card.js",
+  "domain": "matches_card",
+  "country": ["PL"],
+  "homeassistant": "2024.6.0",
+  "version": "0.1.005",
   "resources": [
-    {
-      "type": "module",
-      "url": "/hacsfiles/matches-card/matches-card.js"
-    },
-    {
-      "type": "module",
-      "url": "/hacsfiles/matches-card/matches-card-editor.js"
-    }
-  ]
+    { "type": "module", "url": "/hacsfiles/matches-card/matches-card.js" },
+    { "type": "module", "url": "/hacsfiles/matches-card/matches-card-editor.js" }
+  ],
+  "description": "Custom matches card with gradient rows, full GUI, and YAML sync.",
+  "authors": ["GieOeRZet"],
+  "iot_class": "local_polling"
 }

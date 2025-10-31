@@ -1,0 +1,25 @@
+{
+  "editor": {
+    "entity": "Entity (sensor)",
+    "name": "Card title",
+    "show_logos": "Show team logos",
+    "hover_enabled": "Enable hover effect",
+    "hover_shadow_color": "Hover shadow color",
+    "alignment": "Teams alignment",
+    "alignment_left": "Left",
+    "alignment_center": "Center",
+    "alignment_right": "Right",
+    "font_size": "Font size (px)",
+    "column_widths": "Column widths (%)",
+    "column_date": "Date column width",
+    "column_league": "League icon width",
+    "column_logo": "Team logo width",
+    "column_score": "Score width",
+    "column_result": "Result icon width"
+  },
+  "card": {
+    "no_data": "No data available",
+    "loading": "Loading matches...",
+    "title_default": "90minut Matches"
+  }
+}

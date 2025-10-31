@@ -1,11 +1,23 @@
 {
-  "type": "module",
-  "name": "90minut Matches Card",
-  "filename": "matches-card.js",
-  "render_readme": true,
-  "gui_editor": true,
-  "description": "v0.9.5_gui-rework — pełne działające GUI, 2 herby, zebra, działające pola.",
-  "version": "v0.9.5_gui-rework",
   "domain": "matches_card",
-  "codeowners": ["@GieOeRZet"]
+  "name": "90minut Matches Card",
+  "version": "0.9.6_gui-labeled",
+  "documentation": "https://github.com/gieoerzet/matches-card",
+  "issue_tracker": "https://github.com/gieoerzet/matches-card/issues",
+  "type": "module",
+  "render_readme": true,
+  "resources": [
+    {
+      "type": "module",
+      "url": "/hacsfiles/matches-card/matches-card.js"
+    }
+  ],
+  "custom_cards": [
+    {
+      "type": "matches-card",
+      "name": "90minut Matches",
+      "description": "Wyświetla mecze drużyny z 90minut.pl w stylu Sofascore",
+      "preview": true
+    }
+  ]
 }

@@ -94,4 +94,98 @@ class MatchesCardEditor extends _LitBaseE {
           ${this._num("Data", fs.date, (v)=>this._updateNested(["font_size","date"], v))}
           ${this._num("Drużyny", fs.teams, (v)=>this._updateNested(["font_size","teams"], v))}
           ${this._num("Wynik", fs.score, (v)=>this._updateNested(["font_size","score"], v))}
-          ${this._num("Status", fs.status, (v)=>this._update
+          ${this._num("Status", fs.status, (v)=>this._updateNested(["font_size","status"], v))}
+          ${this._num("Litera W/P/R", fs.result_letter, (v)=>this._updateNested(["font_size","result_letter"], v))}
+        </div>
+
+        <h4>Rozmiary ikon (px)</h4>
+        <div class="row grid3">
+          ${this._int("Liga", is.league, (v)=>this._updateNested(["icon_size","league"], v))}
+          ${this._int("Herb", is.crest, (v)=>this._updateNested(["icon_size","crest"], v))}
+          ${this._int("W/P/R", is.result, (v)=>this._updateNested(["icon_size","result"], v))}
+        </div>
+
+        <h4>Szerokości kolumn (%)</h4>
+        <div class="hint">Ustaw: Data, Liga, Herb, Wynik, W/P/R. Kolumna „Drużyny” = 100% - suma pozostałych.</div>
+        <div class="row grid5">
+          ${this._int("Data", cp.date, (v)=>this._updateNested(["columns_pct","date"], v))}
+          ${this._int("Liga", cp.league, (v)=>this._updateNested(["columns_pct","league"], v))}
+          ${this._int("Herb", cp.crest, (v)=>this._updateNested(["columns_pct","crest"], v))}
+          ${this._int("Wynik", cp.score, (v)=>this._updateNested(["columns_pct","score"], v))}
+          ${this._int("W/P/R", cp.result, (v)=>this._updateNested(["columns_pct","result"], v))}
+        </div>
+
+        <h4>Kolory wyników</h4>
+        <div class="row grid3">
+          ${this._color("Wygrana", col.win || "#3ba55d", (v)=>this._updateNested(["colors","win"], v))}
+          ${this._color("Przegrana", col.loss || "#e23b3b", (v)=>this._updateNested(["colors","loss"], v))}
+          ${this._color("Remis", col.draw || "#468cd2", (v)=>this._updateNested(["colors","draw"], v))}
+        </div>
+      </div>
+    `;
+  }
+
+  // ---- elementy formularza ----
+  _num(label, val, handler) {
+    return htmlE`
+      <ha-textfield
+        type="number"
+        step="0.1"
+        min="0.1"
+        label=${label}
+        .value=${val ?? ""}
+        @input=${(e)=>handler(parseFloat(e.target.value))}
+      ></ha-textfield>
+    `;
+  }
+  _int(label, val, handler) {
+    return htmlE`
+      <ha-textfield
+        type="number"
+        step="1"
+        min="0"
+        label=${label}
+        .value=${val ?? ""}
+        @input=${(e)=>handler(parseInt(e.target.value,10))}
+      ></ha-textfield>
+    `;
+  }
+  _color(label, val, handler) {
+    return htmlE`
+      <div class="color-field">
+        <div class="lbl">${label}</div>
+        <ha-color-picker
+          .value=${val}
+          alpha
+          @value-changed=${(e)=>handler(e.detail.value)}
+        ></ha-color-picker>
+      </div>
+    `;
+  }
+
+  static get styles() {
+    return cssE`
+      .wrap { padding: 8px 12px 16px; }
+      .row { display: grid; grid-gap: 12px; align-items: center; margin: 8px 0; }
+      .grid3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+      .grid4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+      .grid5 { grid-template-columns: repeat(5, minmax(0,1fr)); }
+      .switches { grid-template-columns: auto auto auto auto; }
+      h4 { margin: 12px 0 6px; font-weight: 600; }
+      .hint { opacity: 0.7; font-size: 0.9em; margin-bottom: 6px; }
+      .color-field { display:flex; align-items:center; gap:12px; }
+      .color-field .lbl { width: 120px; }
+    `;
+  }
+}
+
+customElements.define("matches-card-editor", MatchesCardEditor);
+
+// Informacja dla HA (lista kart niestandardowych)
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "matches-card",
+  name: "Matches Card",
+  preview: true,
+  description: "Custom match list card with gradient rows, zebra and full GUI editor."
+});

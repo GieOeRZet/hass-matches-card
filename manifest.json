@@ -1,13 +1,13 @@
 {
-  "domain": "matches_card",
+  "domain": "matches-card",
   "name": "Matches Card (90minut)",
   "documentation": "https://github.com/GieOeRZet/matches-card",
-  "version": "v0.2.006",
   "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
+  "version": "0.2.007",
   "resources": [
     {
       "type": "module",
-      "url": "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/matches-card.js"
+      "url": "/hacsfiles/matches-card/matches-card.js"
     }
   ]
 }

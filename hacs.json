@@ -1,11 +1,13 @@
 {
   "name": "Matches Card",
   "filename": "matches-card.js",
+  "content_in_root": false,
   "render_readme": true,
-  "hide_default_branch": false,
-  "homeassistant": "2024.10.0",
-  "country": ["PL"],
-  "domains": ["frontend"],
-  "type": "plugin",
-  "version": "0.1.016"
+  "zip_release": false,
+  "homeassistant": "2025.1.0",
+  "country": "PL",
+  "domains": ["sensor"],
+  "iot_class": "local_polling",
+  "version": "0.1.017",
+  "hide_default_branch": false
 }

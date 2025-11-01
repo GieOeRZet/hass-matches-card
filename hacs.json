@@ -1,9 +1,11 @@
 {
-  "name": "90minut Matches Card",
+  "name": "Matches Card",
   "filename": "matches-card.js",
   "render_readme": true,
-  "hide_default_branch": true,
-  "homeassistant": "2024.6.0",
-  "country": "PL",
-  "content_in_root": true
+  "hide_default_branch": false,
+  "homeassistant": "2024.10.0",
+  "country": ["PL"],
+  "domains": ["frontend"],
+  "type": "plugin",
+  "version": "0.1.016"
 }

@@ -1,11 +1,17 @@
 {
   "name": "Matches Card (90minut)",
-  "filename": "matches-card.js",
   "render_readme": true,
-  "hide_default_branch": true,
-  "zip_release": false,
-  "homeassistant": "2025.10.0",
-  "persistent_directory": "logo",
+  "filename": "matches-card.js",
   "content_in_root": false,
-  "version": "0.2.007"
+  "domains": ["lovelace"],
+  "country": "PL",
+  "zip_release": false,
+  "version": "v0.2.010",
+  "homeassistant": "2024.8.0",
+  "resources": [
+    {
+      "type": "module",
+      "url": "/hacsfiles/matches-card/matches-card.js"
+    }
+  ]
 }

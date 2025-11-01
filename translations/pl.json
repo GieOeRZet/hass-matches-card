@@ -1,25 +1,87 @@
 {
   "editor": {
-    "entity": "Encja (sensor)",
-    "name": "Tytuł karty",
-    "show_logos": "Pokaż herby drużyn",
-    "hover_enabled": "Włącz efekt podświetlenia (hover)",
-    "hover_shadow_color": "Kolor cienia przy podświetleniu",
-    "alignment": "Wyrównanie nazw drużyn",
-    "alignment_left": "Lewo",
-    "alignment_center": "Środek",
-    "alignment_right": "Prawo",
-    "font_size": "Rozmiar czcionki (px)",
-    "column_widths": "Szerokości kolumn (%)",
-    "column_date": "Data – szerokość kolumny",
-    "column_league": "Liga – szerokość kolumny",
-    "column_logo": "Herb – szerokość kolumny",
-    "column_score": "Wynik – szerokość kolumny",
-    "column_result": "Ikona W/P/R – szerokość kolumny"
+    "entity": {
+      "name": "Encja sensora",
+      "description": "Sensor 90minut.pl zawierający listę meczów (atrybut 'matches')."
+    },
+    "name": {
+      "name": "Nazwa karty",
+      "description": "Tekst nagłówka karty. Jeśli puste – zostanie użyta nazwa sensora."
+    },
+    "show_name": {
+      "name": "Pokaż nagłówek",
+      "description": "Włącza lub wyłącza wyświetlanie nazwy karty."
+    },
+    "show_logos": {
+      "name": "Pokaż herby drużyn",
+      "description": "Wyświetlaj logotypy drużyn gospodarzy i gości."
+    },
+    "full_team_names": {
+      "name": "Pełne nazwy drużyn",
+      "description": "Pokazuj pełną nazwę klubu lub tylko pierwszy człon."
+    },
+    "view_mode": {
+      "name": "Tryb prezentacji wyniku",
+      "description": "Wybierz sposób prezentacji wyniku: gradient lub znaczek W/P/R.",
+      "options": {
+        "gradient": "Gradient tła",
+        "symbol": "Znaczek W/P/R"
+      }
+    },
+    "font_size": {
+      "name": "Wielkość czcionek",
+      "fields": {
+        "date": "Data",
+        "status": "Godzina / KONIEC",
+        "teams": "Nazwy drużyn",
+        "score": "Wyniki"
+      }
+    },
+    "icon_size": {
+      "name": "Rozmiary ikon",
+      "fields": {
+        "league": "Ikona ligi (Ekstraklasa / Puchar)",
+        "crest": "Herby drużyn",
+        "result": "Znaczek W/P/R"
+      }
+    },
+    "gradient": {
+      "name": "Gradient",
+      "fields": {
+        "alpha": "Przezroczystość (0–1)",
+        "start": "Początek (%)",
+        "end": "Koniec (%)"
+      }
+    },
+    "columns_pct": {
+      "name": "Szerokości kolumn (%)",
+      "fields": {
+        "date": "Data",
+        "league": "Liga",
+        "crest": "Herby",
+        "score": "Wynik",
+        "result": "Symbol"
+      }
+    },
+    "colors": {
+      "name": "Kolory wyników",
+      "fields": {
+        "win": "Zwycięstwo",
+        "loss": "Porażka",
+        "draw": "Remis"
+      }
+    },
+    "table": {
+      "name": "Wygląd tabeli",
+      "fields": {
+        "zebra": "Efekt zebry (naprzemienne tło)",
+        "separator": "Linie separatora między wierszami",
+        "system_colors": "Użyj kolorów systemowych motywu HA"
+      }
+    }
   },
   "card": {
-    "no_data": "Brak danych",
-    "loading": "Ładowanie meczów...",
-    "title_default": "90minut – Mecze"
+    "name": "Karta meczów (90minut)",
+    "description": "Wyświetla listę meczów z sensora 90minut.pl w formie tabeli."
   }
 }

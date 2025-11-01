@@ -1,25 +1,87 @@
 {
   "editor": {
-    "entity": "Entity (sensor)",
-    "name": "Card title",
-    "show_logos": "Show team logos",
-    "hover_enabled": "Enable hover effect",
-    "hover_shadow_color": "Hover shadow color",
-    "alignment": "Teams alignment",
-    "alignment_left": "Left",
-    "alignment_center": "Center",
-    "alignment_right": "Right",
-    "font_size": "Font size (px)",
-    "column_widths": "Column widths (%)",
-    "column_date": "Date column width",
-    "column_league": "League icon width",
-    "column_logo": "Team logo width",
-    "column_score": "Score width",
-    "column_result": "Result icon width"
+    "entity": {
+      "name": "Sensor entity",
+      "description": "90minut.pl sensor containing match list (attribute 'matches')."
+    },
+    "name": {
+      "name": "Card title",
+      "description": "Header text for the card. If empty, the sensor name will be used."
+    },
+    "show_name": {
+      "name": "Show header",
+      "description": "Enable or disable the card title."
+    },
+    "show_logos": {
+      "name": "Show team crests",
+      "description": "Display logos of home and away teams."
+    },
+    "full_team_names": {
+      "name": "Full team names",
+      "description": "Show full club name or only the first word."
+    },
+    "view_mode": {
+      "name": "Result display mode",
+      "description": "Choose how to present match results: gradient or symbol W/D/L.",
+      "options": {
+        "gradient": "Gradient background",
+        "symbol": "Symbol (W/D/L)"
+      }
+    },
+    "font_size": {
+      "name": "Font sizes",
+      "fields": {
+        "date": "Date",
+        "status": "Time / END",
+        "teams": "Team names",
+        "score": "Scores"
+      }
+    },
+    "icon_size": {
+      "name": "Icon sizes",
+      "fields": {
+        "league": "League icon (Ekstraklasa / Cup)",
+        "crest": "Team crests",
+        "result": "Result symbol"
+      }
+    },
+    "gradient": {
+      "name": "Gradient",
+      "fields": {
+        "alpha": "Transparency (0–1)",
+        "start": "Start (%)",
+        "end": "End (%)"
+      }
+    },
+    "columns_pct": {
+      "name": "Column widths (%)",
+      "fields": {
+        "date": "Date",
+        "league": "League",
+        "crest": "Crests",
+        "score": "Score",
+        "result": "Symbol"
+      }
+    },
+    "colors": {
+      "name": "Result colors",
+      "fields": {
+        "win": "Win",
+        "loss": "Loss",
+        "draw": "Draw"
+      }
+    },
+    "table": {
+      "name": "Table appearance",
+      "fields": {
+        "zebra": "Zebra effect (alternate background)",
+        "separator": "Separator lines between rows",
+        "system_colors": "Use system theme colors"
+      }
+    }
   },
   "card": {
-    "no_data": "No data available",
-    "loading": "Loading matches...",
-    "title_default": "90minut Matches"
+    "name": "Matches Card (90minut)",
+    "description": "Displays football matches from the 90minut.pl sensor in a table view."
   }
 }

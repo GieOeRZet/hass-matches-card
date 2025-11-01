@@ -5,9 +5,10 @@
 //
 //  Opis:
 //  Karta Lovelace do Home Assistant pokazująca mecze z sensora 90minut.pl.
-//  Layout identyczny jak w poprzednim wariancie, poprawiona logika tła:
-//  - Gradient: bez zebry, z separatorami
-//  - Symbol: z zebrą, z separatorami
+//  Layout identyczny jak poprzednio – przywrócony gradient i separator na stałe.
+//  Tryby:
+//   - view_mode: "gradient" → tło gradientowe W/P/R (bez zebry)
+//   - view_mode: "symbol"   → kółka W/P/R (z zebrą)
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
@@ -34,7 +35,7 @@ class MatchesCard extends HTMLElement {
 
       colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
 
-      table: { zebra: true, system_colors: true }, // separator zawsze włączony
+      table: { zebra: true, system_colors: true },
 
       ...config,
     };
@@ -55,7 +56,9 @@ class MatchesCard extends HTMLElement {
     // STYLE BAZOWE
     // -------------------------
     const zebraEnabled = this.config.view_mode === "symbol" && this.config.table?.zebra;
-    const zebraCSS = zebraEnabled ? `tr:nth-child(even){background-color:rgba(240,240,240,0.4);}` : "";
+    const zebraCSS = zebraEnabled
+      ? `tr:nth-child(even){background-color:rgba(240,240,240,0.4);}`
+      : "";
     const separatorCSS = `tr{border-bottom:1px solid rgba(0,0,0,0.1);}`;
 
     const style = `
@@ -164,12 +167,12 @@ class MatchesCard extends HTMLElement {
           ? match.away
           : match.away.split(" ")[0];
 
+        // ✅ poprawiony gradient
         const gradientCSS =
           this.config.view_mode === "gradient" && match.result
             ? `background: linear-gradient(to right,
                 rgba(0,0,0,0) ${this.config.gradient.start}%,
-                ${this.config.colors[match.result]}${this.config.gradient.alpha}
-                ${this.config.gradient.end}%);`
+                ${this.hexToRgba(this.config.colors[match.result], this.config.gradient.alpha)} ${this.config.gradient.end}%);`
             : "";
 
         return `
@@ -238,6 +241,15 @@ class MatchesCard extends HTMLElement {
         <table>${rows}</table>
       </ha-card>
     `;
+  }
+
+  // ✅ funkcja konwertująca HEX → RGBA (naprawia gradient)
+  hexToRgba(hex, alpha) {
+    const bigint = parseInt(hex.replace("#", ""), 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
   }
 
   getCardSize() {

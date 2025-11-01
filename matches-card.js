@@ -1,168 +1,237 @@
 // ============================================================================
-// Matches Card (90minut) – v0.3.002
-// Autor: GieOeRZet
-// Repozytorium: https://github.com/GieOeRZet/matches-card
-// Opis: Karta Lovelace do HA pokazująca mecze z sensora 90minut.pl
+//  Matches Card (90minut) - główny plik karty
+//  Wersja: 0.3.004
+//  Autor: GieOeRZet
+//  Repozytorium: https://github.com/GieOeRZet/matches-card
+//  Opis:
+//  Karta pokazująca mecze z sensora 90minut, z obsługą ligi, wyników,
+//  gradientu, zebry, ikon W/P/R, konfigurowalnych czcionek i opcji w GUI.
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
-  setConfig(config) {
-    if (!config.entity)
-      throw new Error("Entity jest wymagane (np. sensor.90minut_gornik_zabrze_matches)");
+  static getConfigElement() {
+    return document.createElement("matches-card-editor");
+  }
 
-    this.config = {
-      name: "90minut Matches",
-      show_name: true,
+  static getStubConfig() {
+    return {
+      entity: "sensor.matches_today",
+      name: "90minut - Mecze dziś",
+      fill: "system",
+      show_symbols: true,
       show_logos: true,
       full_team_names: true,
-      view_mode: "gradient", // gradient | symbol
-      show_wpr: true,
-      fill_mode: "gradient", // gradient | zebra | none
-      row_height: 48, // px
-
-      font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
-      icon_size: { league: 26, crest: 24, result: 26 },
-
-      gradient: { alpha: 0.5, start: 35, end: 100 },
-
-      columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
-
-      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
-
-      table: { system_colors: true, separator: true },
-
-      ...config,
+      gradient_start: 35,
+      gradient_alpha: 0.5,
+      font_size_date: 0.9,
+      font_size_status: 0.8,
+      font_size_teams: 1.0,
+      font_size_score: 1.0,
+      icon_size_league: 26,
+      icon_size_crest: 24,
+      icon_size_result: 26,
     };
+  }
+
+  setConfig(config) {
+    if (!config.entity)
+      throw new Error("Musisz wybrać encję sensora z danymi meczów!");
+
+    this._config = config;
+    this._entity = config.entity;
+    this.render();
   }
 
   set hass(hass) {
     this._hass = hass;
-    const entity = this.config.entity;
-    const stateObj = hass.states[entity];
-    if (!stateObj) return;
+    if (this._entity) this.render();
+  }
 
-    const matches = stateObj.attributes.matches || [];
+  render() {
+    if (!this._hass) return;
+    const entity = this._hass.states[this._entity];
+    if (!entity) return;
 
-    const zebraCSS =
-      this.config.fill_mode === "zebra"
-        ? `tr:nth-child(even){background-color:rgba(240,240,240,0.4);}`
-        : "";
+    const matches = entity.attributes.matches || [];
+    const c = this._config;
 
-    const separatorCSS = this.config.table.separator
-      ? `tr{border-bottom:1px solid rgba(0,0,0,0.1);}`
-      : "";
+    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+
+    const zebra = c.fill === "zebra";
+    const gradient = c.fill === "gradient";
+    const system = c.fill === "system" || !c.fill;
 
     const style = `
       <style>
-        ha-card {
-          padding: 10px 0;
-          font-family: "Sofascore Sans", Arial, sans-serif;
+        :host {
+          display: block;
+          font-family: var(--ha-card-font-family, 'Roboto');
+          --color-bg: var(--card-background-color);
+          --color-fg: var(--primary-text-color);
         }
-        table { width: 100%; border-collapse: collapse; }
+
+        ha-card {
+          padding: 0.6em 0.8em;
+          background: var(--color-bg);
+          color: var(--color-fg);
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          border-spacing: 0;
+        }
+
+        tr {
+          transition: background 0.2s ease;
+        }
+
+        ${
+          zebra
+            ? `tr:nth-child(even) { background: rgba(255,255,255,0.04); }`
+            : ""
+        }
+
+        ${
+          gradient
+            ? `tr::after {
+              content: '';
+              position: absolute;
+              inset: 0;
+              pointer-events: none;
+              background: linear-gradient(
+                to right,
+                rgba(255,255,255,0) ${c.gradient_start || 35}%,
+                rgba(255,255,255,${c.gradient_alpha || 0.5}) 100%
+              );
+            }`
+            : ""
+        }
+
+        tr:hover {
+          background: rgba(255,255,255,0.07);
+        }
+
         td {
+          padding: 0.5em 0.3em;
           text-align: center;
           vertical-align: middle;
-          padding: 4px 6px;
-          height: ${this.config.row_height}px;
+          position: relative;
         }
-        .dual-cell { display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .team-cell { text-align: left; vertical-align: middle; padding-left: 8px; }
-        .team-row { display: flex; align-items: center; justify-content: flex-start; line-height: 1.3em; }
-        .bold { font-weight: 600; }
-        .dim { opacity: 0.8; }
-        .result-circle {
-          border-radius: 50%; width: ${this.config.icon_size.result}px; height: ${this.config.icon_size.result}px;
-          color: white; display: flex; justify-content: center; align-items: center;
-          font-weight: bold; margin: 0 auto;
+
+        .team-name {
+          text-align: left;
+          font-weight: 500;
+          font-size: ${c.font_size_teams || 1.0}em;
         }
-        ${zebraCSS} ${separatorCSS}
+
+        .score {
+          font-weight: bold;
+          font-size: ${c.font_size_score || 1.0}em;
+        }
+
+        .date {
+          font-size: ${c.font_size_date || 0.9}em;
+          text-align: center;
+        }
+
+        .status {
+          font-size: ${c.font_size_status || 0.8}em;
+        }
+
+        .crest {
+          height: ${c.icon_size_crest || 24}px;
+          width: auto;
+          border-radius: 4px;
+          background: white;
+          padding: 2px;
+        }
+
+        .league {
+          height: ${c.icon_size_league || 26}px;
+          width: auto;
+          display: block;
+          margin: auto;
+        }
+
+        .result-symbol {
+          font-weight: bold;
+          color: var(--primary-color);
+          font-size: ${c.icon_size_result || 26}px;
+        }
+
+        tr + tr td {
+          border-top: 1px solid rgba(255,255,255,0.08);
+        }
       </style>
     `;
 
     const rows = matches
-      .map((match) => {
-        const rawDate = match.date ? match.date.replace(" ", "T") : null;
-        const dateObj = rawDate ? new Date(rawDate) : null;
-        const dateStr = dateObj
-          ? dateObj.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" })
-          : "-";
-        const timeStr = match.finished
+      .map((m) => {
+        const date = this._formatDate(m.date);
+        const status = m.finished
           ? "KONIEC"
-          : dateObj
-          ? dateObj.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
+          : (m.time || "").replace(":", ".");
+        const teamHome = c.full_team_names
+          ? m.home
+          : m.home.split(" ")[0];
+        const teamAway = c.full_team_names
+          ? m.away
+          : m.away.split(" ")[0];
+
+        const winner =
+          m.score_home > m.score_away
+            ? "home"
+            : m.score_home < m.score_away
+            ? "away"
+            : "draw";
+
+        const score = m.finished
+          ? `${m.score_home} : ${m.score_away}`
           : "";
 
-        const resultClass =
-          match.result === "win"
-            ? "row-win"
-            : match.result === "loss"
-            ? "row-loss"
-            : match.result === "draw"
-            ? "row-draw"
-            : "";
-
-        const homeBold = match.result === "win" ? "bold" : match.result === "loss" ? "dim" : "";
-        const awayBold = match.result === "loss" ? "bold" : match.result === "win" ? "dim" : "";
-
-        const [homeScore, awayScore] = (match.score || "-").split("-");
-
         const leagueIcon =
-          match.league === "L"
+          m.league === "L"
             ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/ekstraklasa.png"
-            : match.league === "PP"
+            : m.league === "PP"
             ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/puchar.png"
-            : null;
-
-        const homeTeam = this.config.full_team_names ? match.home : match.home.split(" ")[0];
-        const awayTeam = this.config.full_team_names ? match.away : match.away.split(" ")[0];
-
-        const gradientCSS =
-          this.config.fill_mode === "gradient"
-            ? `background: linear-gradient(to right,
-                rgba(0,0,0,0) ${this.config.gradient.start}%,
-                ${match.result ? this.config.colors[match.result] : "rgba(0,0,0,0)"}${match.result ? this.config.gradient.alpha : 0}
-                100%);`
             : "";
 
         return `
-          <tr class="${resultClass}" style="${gradientCSS}">
-            <td style="width:${this.config.columns_pct.date}%;">
-              <div style="font-size:${this.config.font_size.date}em;">${dateStr}</div>
-              <div style="font-size:${this.config.font_size.status}em;">${timeStr}</div>
+          <tr>
+            <td class="date">
+              <div>${date}</div>
+              <div class="status">${status}</div>
             </td>
-
-            <td style="width:${this.config.columns_pct.league}%;">
+            <td>
               ${
                 leagueIcon
-                  ? `<img src="${leagueIcon}" height="${this.config.icon_size.league}" style="display:block;margin:auto;" />`
-                  : `<div style="font-size:0.9em;opacity:0.8;">${match.league}</div>`
+                  ? `<img class="league" src="${leagueIcon}" alt="league">`
+                  : `<div>${m.league || "-"}</div>`
               }
             </td>
-
-            ${
-              this.config.show_logos
-                ? `
-            <td class="dual-cell" style="width:${this.config.columns_pct.crest}%;">
-              <div><img src="${match.logo_home}" height="${this.config.icon_size.crest}" style="background:white;border-radius:6px;padding:2px;" /></div>
-              <div><img src="${match.logo_away}" height="${this.config.icon_size.crest}" style="background:white;border-radius:6px;padding:2px;" /></div>
-            </td>`
-                : ""
-            }
-
-            <td class="team-cell">
-              <div class="team-row ${homeBold}" style="font-size:${this.config.font_size.teams}em;">${homeTeam}</div>
-              <div class="team-row ${awayBold}" style="font-size:${this.config.font_size.teams}em;">${awayTeam}</div>
-            </td>
-
-            <td class="dual-cell" style="width:${this.config.columns_pct.score}%;">
-              <div class="${homeBold}" style="font-size:${this.config.font_size.score}em;">${homeScore}</div>
-              <div class="${awayBold}" style="font-size:${this.config.font_size.score}em;">${awayScore}</div>
-            </td>
-
-            <td class="result-cell" style="width:${this.config.columns_pct.result}%;">
+            <td>
               ${
-                this.config.show_wpr && match.result
-                  ? `<div class="result-circle" style="background-color:${this.config.colors[match.result]}">${match.result.charAt(0).toUpperCase()}</div>`
+                c.show_logos
+                  ? `<img class="crest" src="${m.home_logo}" alt="${teamHome}">`
+                  : ""
+              }
+              <div class="team-name" style="opacity:${
+                winner === "away" ? 0.8 : 1
+              };font-weight:${winner === "home" ? "bold" : "normal"};">
+                ${teamHome}
+              </div>
+              <div class="team-name" style="opacity:${
+                winner === "home" ? 0.8 : 1
+              };font-weight:${winner === "away" ? "bold" : "normal"};">
+                ${teamAway}
+              </div>
+            </td>
+            <td class="score">${score}</td>
+            <td>
+              ${
+                c.show_symbols && m.result_symbol
+                  ? `<div class="result-symbol">${m.result_symbol}</div>`
                   : ""
               }
             </td>
@@ -171,31 +240,32 @@ class MatchesCard extends HTMLElement {
       })
       .join("");
 
-    const cardName =
-      this.config.show_name === false ? "" : this.config.name || stateObj.attributes.friendly_name || "90minut Matches";
+    const card = `
+      ${style}
+      <ha-card>
+        ${
+          c.name
+            ? `<h2 style="margin:0.2em 0 0.6em 0;">${c.name}</h2>`
+            : ""
+        }
+        <table>${rows}</table>
+      </ha-card>
+    `;
 
-    this.innerHTML = `${style}<ha-card ${cardName ? `header="${cardName}"` : ""}><table>${rows}</table></ha-card>`;
+    this.shadowRoot.innerHTML = card;
   }
 
-  getCardSize() {
-    return 6;
-  }
-
-  static getConfigElement() {
-    if (customElements.get("matches-card-editor")) {
-      return document.createElement("matches-card-editor");
+  _formatDate(d) {
+    if (!d) return "";
+    try {
+      const dt = new Date(d);
+      return `${dt.getDate().toString().padStart(2, "0")}-${(dt.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${dt.getFullYear().toString().slice(2)}`;
+    } catch {
+      return d;
     }
-    import("/hacsfiles/matches-card/matches-card-editor.js")
-      .then(() => console.log("✅ matches-card-editor.js załadowany"))
-      .catch((e) => console.error("❌ Błąd ładowania edytora:", e));
-    return document.createElement("matches-card-editor");
   }
 }
 
 customElements.define("matches-card", MatchesCard);
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "matches-card",
-  name: "Matches Card (90minut)",
-  description: "Karta pokazująca mecze z sensora 90minut.pl",
-});

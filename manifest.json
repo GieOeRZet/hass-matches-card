@@ -1,9 +1,8 @@
 {
   "domain": "matches-card",
   "name": "Matches Card (90minut)",
+  "version": "0.2.010",
   "documentation": "https://github.com/GieOeRZet/matches-card",
-  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "version": "0.2.007",
   "resources": [
     {
       "type": "module",

@@ -2,9 +2,6 @@
 //  Matches Card (90minut) – v0.3.001
 //  Autor: GieOeRZet
 //  Repozytorium: https://github.com/GieOeRZet/matches-card
-//  Opis:
-//  Karta Lovelace pokazująca mecze z sensora 90minut.pl.
-//  Wersja z edytorem GUI, gradientem, efektami zebra i pełną konfiguracją YAML.
 // ============================================================================
 
 class MatchesCard extends HTMLElement {

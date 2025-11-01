@@ -1,17 +1,22 @@
 {
   "domain": "matches_card",
-  "name": "90minut Matches Card",
+  "name": "Matches Card",
+  "version": "0.1.016",
   "documentation": "https://github.com/GieOeRZet/matches-card",
   "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "version": "0.1.014",
-  "type": "js",
+  "codeowners": ["@GieOeRZet"],
+  "requirements": [],
+  "dependencies": [],
+  "render_readme": true,
+  "iot_class": "local_polling",
+  "homeassistant": "2024.10.0",
+  "integration_type": "helper",
+  "frontend": true,
   "resources": [
     {
-      "file": "matches-card.js",
-      "type": "module"
+      "type": "module",
+      "url": "/hacsfiles/matches-card/matches-card.js",
+      "version": "0.1.016"
     }
-  ],
-  "render_readme": true,
-  "codeowners": ["@GieOeRZet"],
-  "homeassistant": "2024.6.0"
+  ]
 }

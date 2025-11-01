@@ -1,12 +1,10 @@
 {
-  "domain": "matches-card",
   "name": "Matches Card (90minut)",
-  "version": "0.2.010",
-  "documentation": "https://github.com/GieOeRZet/matches-card",
-  "resources": [
-    {
-      "type": "module",
-      "url": "/hacsfiles/matches-card/matches-card.js"
-    }
-  ]
+  "render_readme": false,
+  "filename": "matches-card.js",
+  "domain": "matches-card",
+  "country": "PL",
+  "content_in_root": true,
+  "homeassistant": "2025.9.0",
+  "version": "0.2.011"
 }

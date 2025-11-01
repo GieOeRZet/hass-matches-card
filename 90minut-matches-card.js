@@ -1,5 +1,5 @@
 // ============================================================================
-//  Matches Card (90minut) – v0.2.001
+//  Matches Card (90minut) – v0.2.003
 //  Autor: GieOeRZet
 //  Repozytorium: https://github.com/GieOeRZet/matches-card
 //
@@ -224,9 +224,8 @@ class NinetyMinutMatchesCard extends HTMLElement {
             ? `background: linear-gradient(to right,
                 rgba(0,0,0,0) ${this.config.gradient.start}%,
                 ${match.result
-                  ? this.config.colors[match.result]
-                  : "rgba(0,0,0,0)"}${match.result ? this.config.gradient.alpha : 0}
-                100%);`
+                  ? this.config.colors[match.result].replace(")", `, ${this.config.gradient.alpha})`)
+                  : "rgba(0,0,0,0)"} 100%);`
             : "";
 
         // ==========================================================================
@@ -234,13 +233,10 @@ class NinetyMinutMatchesCard extends HTMLElement {
         // ==========================================================================
         return `
           <tr class="${resultClass}" style="${gradientCSS}">
-            <!-- Data -->
             <td style="width:${this.config.columns_pct.date}%;">
               <div style="font-size:${this.config.font_size.date}em;">${dateStr}</div>
               <div style="font-size:${this.config.font_size.status}em;">${timeStr}</div>
             </td>
-
-            <!-- Liga -->
             <td style="width:${this.config.columns_pct.league}%;">
               ${
                 leagueIcon
@@ -248,8 +244,6 @@ class NinetyMinutMatchesCard extends HTMLElement {
                   : `<div style="font-size:0.9em;opacity:0.8;">${match.league}</div>`
               }
             </td>
-
-            <!-- Herby -->
             ${
               this.config.show_logos
                 ? `
@@ -259,20 +253,14 @@ class NinetyMinutMatchesCard extends HTMLElement {
             </td>`
                 : ""
             }
-
-            <!-- Drużyny -->
             <td class="team-cell">
               <div class="team-row ${homeBold}" style="font-size:${this.config.font_size.teams}em;">${homeTeam}</div>
               <div class="team-row ${awayBold}" style="font-size:${this.config.font_size.teams}em;">${awayTeam}</div>
             </td>
-
-            <!-- Wynik -->
             <td class="dual-cell" style="width:${this.config.columns_pct.score}%;">
               <div class="${homeBold}" style="font-size:${this.config.font_size.score}em;">${homeScore}</div>
               <div class="${awayBold}" style="font-size:${this.config.font_size.score}em;">${awayScore}</div>
             </td>
-
-            <!-- Symbol W/P/R -->
             <td class="result-cell" style="width:${this.config.columns_pct.result}%;">
               ${
                 this.config.view_mode === "symbol" && match.result

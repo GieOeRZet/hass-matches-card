@@ -1,10 +1,12 @@
 {
   "name": "Matches Card (90minut)",
+  "content_in_root": true,
   "filename": "matches-card.js",
-  "version": "0.2.005",
-  "content_in_root": false,
-  "zip_release": true,
   "render_readme": true,
+  "domains": [],
   "country": "PL",
-  "homeassistant": "2024.6.0"
+  "homeassistant": "2024.8.0",
+  "hide_default_branch": false,
+  "iot_class": "Local Polling",
+  "version": "v0.2.006"
 }

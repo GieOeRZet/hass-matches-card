@@ -4,7 +4,7 @@
   "filename": "matches-card.js",
   "render_readme": true,
   "zip_release": false,
-  "version": "0.3.006b",
+  "version": "0.3.007",
   "resources": [
     { "type": "module", "url": "/hacsfiles/matches-card/matches-card.js" },
     { "type": "module", "url": "/hacsfiles/matches-card/matches-card-editor.js" }

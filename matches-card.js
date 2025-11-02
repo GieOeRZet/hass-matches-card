@@ -1,12 +1,9 @@
 // ============================================================================
-//  Matches Card – v0.3.006
-//  - Poprawiony gradient (RGBA zamiast błędnego HEX+alpha)
-//  - Dynamiczny import GUI edytora
-//  - Stub config dla kreatora HA
+//  Matches Card – v0.3.006b
+//  - Karta wyników 90minut.pl z gradientem i obsługą GUI
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
-  // ======================== KONFIGURACJA ========================
   setConfig(config) {
     if (!config.entity) throw new Error("Entity is required");
     this.config = {
@@ -23,18 +20,6 @@ class MatchesCard extends HTMLElement {
     };
   }
 
-  // ======================== HELPER RGBA ========================
-  _hexToRgba(hex, alpha = 1) {
-    if (!hex) return "rgba(0,0,0,0)";
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result) return hex; // np. już rgba()
-    const r = parseInt(result[1], 16);
-    const g = parseInt(result[2], 16);
-    const b = parseInt(result[3], 16);
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
-
-  // ======================== RENDEROWANIE ========================
   set hass(hass) {
     this._hass = hass;
     const entity = this.config.entity;
@@ -90,6 +75,7 @@ class MatchesCard extends HTMLElement {
           m.result === "loss" ? "bold" : m.result === "win" ? "dim" : "";
 
         const [homeScore, awayScore] = (m.score || "-").split("-");
+
         const leagueIcon =
           m.league === "L"
             ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/ekstraklasa.png"
@@ -98,10 +84,8 @@ class MatchesCard extends HTMLElement {
             : null;
 
         const fillStyle =
-          this.config.fill === "gradient" && m.result
-            ? `background:linear-gradient(to right,
-                rgba(0,0,0,0) ${this.config.gradient.start}%,
-                ${this._hexToRgba(this.config.colors[m.result], this.config.gradient.alpha)} 100%)`
+          this.config.fill === "gradient"
+            ? `background:linear-gradient(to right,rgba(0,0,0,0) ${this.config.gradient.start}%,${this.config.colors[m.result] || "rgba(0,0,0,0)"}${this.config.gradient.alpha} 100%);`
             : "";
 
         return `
@@ -144,37 +128,16 @@ class MatchesCard extends HTMLElement {
     this.innerHTML = `${style}<ha-card ${title}><table>${rows}</table></ha-card>`;
   }
 
-  // ======================== GUI EDYTOR ========================
-  static async getConfigElement() {
-    try {
-      await import("./matches-card-editor.js");
-      return document.createElement("matches-card-editor");
-    } catch (e) {
-      const el = document.createElement("hui-error-card");
-      el.setConfig({
-        error: "Editor not loaded (matches-card-editor.js)",
-        origConfig: {},
-      });
-      return el;
-    }
-  }
-
-  static getStubConfig() {
-    return {
-      entity: "sensor.matches_example",
-      show_name: true,
-      show_logos: true,
-      fill: "gradient",
-    };
+  static getConfigElement() {
+    return document.createElement("matches-card-editor");
   }
 }
 
-// ======================== REJESTRACJA ========================
 customElements.define("matches-card", MatchesCard);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "matches-card",
   name: "Matches Card (90minut)",
   preview: true,
-  description: "Karta meczów z serwisu 90minut.pl z GUI edytorem",
+  description: "Karta meczów 90minut.pl z edytorem GUI",
 });

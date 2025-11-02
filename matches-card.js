@@ -131,7 +131,21 @@ class MatchesCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("matches-card-editor");
   }
+
+  static getStubConfig() {
+    return { entity: "sensor.90minut_gornik_zabrze_matches" };
+  }
 }
+
+customElements.define("matches-card", MatchesCard);
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "matches-card",
+  name: "Matches Card (90minut)",
+  preview: true,
+  description: "Karta meczów 90minut.pl z edytorem GUI",
+});
+
 
 customElements.define("matches-card", MatchesCard);
 window.customCards = window.customCards || [];

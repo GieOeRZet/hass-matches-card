@@ -1,11 +1,22 @@
 // ============================================================================
-//  Matches Card Editor – v0.3.007
-//  ✅ Fix: Błąd ha-form.ts:118 (undefined.map)
-//  ✅ Fix: gradient.* / colors.* flatten schema
-//  ✅ Preview: pokazuje przykładowy mecz z gradientem
+//  Matches Card Editor – v0.3.008
+//  - Pełny formularz konfiguracyjny (ha-form)
+//  - Naprawione ładowanie ha-form
+//  - Rozwijana sekcja zaawansowana
+//  - Podgląd demo z gradientem
 // ============================================================================
 
-console.info("%c [MatchesCardEditor] v0.3.007 loaded", "color: #03a9f4; font-weight: bold;");
+import "@material/mwc-button";
+import "@material/mwc-switch";
+import "@polymer/paper-input/paper-input.js";
+
+// 🔧 Dynamiczne ładowanie ha-form, jeśli nie jest dostępne
+if (!customElements.get("ha-form")) {
+  import("../../../homeassistant-frontend/build/ha-form.js").catch((e) => {
+    console.warn("[MatchesCardEditor] ha-form not found yet, waiting...");
+    setTimeout(() => import("../../../homeassistant-frontend/build/ha-form.js"), 2000);
+  });
+}
 
 class MatchesCardEditor extends HTMLElement {
   static get properties() {
@@ -20,152 +31,156 @@ class MatchesCardEditor extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = JSON.parse(JSON.stringify(config || {}));
-    this._updatePreview();
+    this._config = {
+      name: "90minut Matches",
+      show_name: true,
+      show_logos: true,
+      fill: "gradient",
+      show_result_symbol: true,
+      font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
+      icon_size: { league: 26, crest: 24, result: 26 },
+      gradient: { alpha: 0.5, start: 35, end: 100 },
+      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
+      ...config,
+    };
   }
 
   set hass(hass) {
     this._hass = hass;
-    this._render();
+    this.render();
   }
 
-  // =========================================================================
-  // SCHEMAT – podstawowe + zaawansowane pola
-  // =========================================================================
-  _schemaBasic() {
-    return [
-      { name: "entity", selector: { entity: { domain: "sensor" } } },
-      { name: "fill", selector: { select: { options: ["gradient", "zebra", "none"] } } },
-      { name: "show_name", selector: { boolean: {} } },
-      { name: "show_logos", selector: { boolean: {} } },
-      { name: "show_result_symbol", selector: { boolean: {} } },
+  _schema() {
+    const schema = [
+      {
+        name: "entity",
+        selector: { entity: { domain: "sensor" } },
+      },
+      {
+        name: "name",
+        label: "Tytuł karty",
+        selector: { text: {} },
+      },
+      {
+        name: "show_name",
+        label: "Pokaż tytuł",
+        selector: { boolean: {} },
+      },
+      {
+        name: "show_logos",
+        label: "Pokaż logotypy drużyn",
+        selector: { boolean: {} },
+      },
+      {
+        name: "fill",
+        label: "Styl wypełnienia wierszy",
+        selector: {
+          select: {
+            options: [
+              { label: "Gradient", value: "gradient" },
+              { label: "Zebra", value: "zebra" },
+              { label: "Brak", value: "none" },
+            ],
+          },
+        },
+      },
+      {
+        name: "show_result_symbol",
+        label: "Ikony wyników (W/D/L)",
+        selector: { boolean: {} },
+      },
     ];
+
+    if (this._showAdvanced) {
+      schema.push(
+        { name: "gradient.alpha", label: "Przezroczystość gradientu (0–1)", selector: { number: { min: 0, max: 1, step: 0.1 } } },
+        { name: "gradient.start", label: "Start gradientu (%)", selector: { number: { min: 0, max: 100 } } },
+        { name: "gradient.end", label: "Koniec gradientu (%)", selector: { number: { min: 0, max: 100 } } },
+        { name: "colors.win", label: "Kolor zwycięstwa", selector: { color: {} } },
+        { name: "colors.loss", label: "Kolor porażki", selector: { color: {} } },
+        { name: "colors.draw", label: "Kolor remisu", selector: { color: {} } },
+        { name: "icon_size.league", label: "Rozmiar ikony ligi", selector: { number: { min: 10, max: 60 } } },
+        { name: "icon_size.crest", label: "Rozmiar herbu", selector: { number: { min: 10, max: 60 } } },
+        { name: "icon_size.result", label: "Rozmiar symbolu wyniku", selector: { number: { min: 10, max: 60 } } }
+      );
+    }
+
+    return schema;
   }
 
-  _schemaAdvanced() {
-    return [
-      // Gradient
-      { name: "gradient.start", selector: { number: { min: 0, max: 100, step: 1 } } },
-      { name: "gradient.end", selector: { number: { min: 0, max: 100, step: 1 } } },
-      { name: "gradient.alpha", selector: { number: { min: 0, max: 1, step: 0.05 } } },
-
-      // Kolory
-      { name: "colors.win", selector: { color: {} } },
-      { name: "colors.draw", selector: { color: {} } },
-      { name: "colors.loss", selector: { color: {} } },
-
-      // Czcionki
-      { name: "font_size.date", selector: { number: { min: 0.5, max: 2, step: 0.1 } } },
-      { name: "font_size.status", selector: { number: { min: 0.5, max: 2, step: 0.1 } } },
-      { name: "font_size.teams", selector: { number: { min: 0.5, max: 2, step: 0.1 } } },
-      { name: "font_size.score", selector: { number: { min: 0.5, max: 2, step: 0.1 } } },
-
-      // Ikony
-      { name: "icon_size.league", selector: { number: { min: 10, max: 40, step: 1 } } },
-      { name: "icon_size.crest", selector: { number: { min: 10, max: 40, step: 1 } } },
-      { name: "icon_size.result", selector: { number: { min: 10, max: 40, step: 1 } } },
-    ];
-  }
-
-  // =========================================================================
-  // Render
-  // =========================================================================
-  _render() {
+  render() {
     if (!this._hass) return;
 
-    const schema = [...this._schemaBasic(), ...(this._showAdvanced ? this._schemaAdvanced() : [])];
+    const style = `
+      <style>
+        ha-card {
+          display: block;
+          padding: 12px;
+        }
+        .buttons {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 10px;
+        }
+        .demo {
+          border-radius: 8px;
+          padding: 8px;
+          margin-top: 12px;
+          background: linear-gradient(to right, rgba(0,0,0,0) 35%, rgba(59,165,93,0.5) 100%);
+        }
+        .demo span {
+          font-weight: bold;
+          font-size: 1em;
+          color: white;
+        }
+      </style>
+    `;
 
-    const html = `
+    const demo = `
+      <div class="demo">
+        <span>Górnik Zabrze</span> &nbsp; <span>2 - 1</span> &nbsp; <span>Ruch Chorzów</span>
+      </div>
+    `;
+
+    this.shadowRoot.innerHTML = `
+      ${style}
       <ha-card header="Ustawienia Matches Card">
-        <div class="form">
-          <ha-form
-            .hass="${this._hass}"
-            .data="${this._flattenDots(this._config)}"
-            .schema="${schema}"
-            @value-changed="${(ev) => this._valueChanged(ev)}"
-          ></ha-form>
+        <div class="buttons">
+          <mwc-button @click="${() => this._onToggleAdvanced()}">
+            ${this._showAdvanced ? "Ukryj zaawansowane" : "Pokaż zaawansowane"}
+          </mwc-button>
+          <mwc-button @click="${() => this._onResetDefaults()}">Przywróć domyślne</mwc-button>
         </div>
-
-        <mwc-button @click="${() => this._toggleAdvanced()}">
-          ${this._showAdvanced ? "Ukryj" : "Pokaż"} zaawansowane
-        </mwc-button>
-
-        <div id="preview"></div>
-      </ha-card>
-    `;
-
-    this.shadowRoot.innerHTML = html;
-    this._updatePreview();
-  }
-
-  // =========================================================================
-  // Podgląd mini
-  // =========================================================================
-  _updatePreview() {
-    const container = this.shadowRoot?.querySelector("#preview");
-    if (!container) return;
-
-    container.innerHTML = `
-      <ha-card header="Podgląd (demo)">
-        <table style="width:100%;border-collapse:collapse;font-family:sans-serif;">
-          <tr style="background:linear-gradient(to right,rgba(0,0,0,0) ${this._config.gradient?.start ?? 20}%,
-             rgba(59,165,93,${this._config.gradient?.alpha ?? 0.5}) ${this._config.gradient?.end ?? 100}%);">
-            <td style="padding:6px;">Górnik Zabrze</td>
-            <td>2 - 1</td>
-            <td>Ruch Chorzów</td>
-          </tr>
-        </table>
+        <ha-form
+          .hass=${this._hass}
+          .data=${this._config}
+          .schema=${this._schema()}
+          @value-changed=${(ev) => this._valueChanged(ev)}
+        ></ha-form>
+        <h3>Podgląd (demo)</h3>
+        ${demo}
       </ha-card>
     `;
   }
 
-  // =========================================================================
-  // Eventy i pomocnicze
-  // =========================================================================
+  _onToggleAdvanced() {
+    this._showAdvanced = !this._showAdvanced;
+    this.render();
+  }
+
+  _onResetDefaults() {
+    this.setConfig({});
+    this.render();
+    this.dispatchEvent(new Event("config-changed", { bubbles: true, composed: true }));
+  }
+
   _valueChanged(ev) {
     ev.stopPropagation();
-    const value = ev.detail.value;
-    this._config = this._expandDots(value);
-    this._updatePreview();
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+    const newConfig = ev.detail.value;
+    this._config = newConfig;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig } }));
   }
-
-  _toggleAdvanced() {
-    this._showAdvanced = !this._showAdvanced;
-    this._render();
-  }
-
-  // =========================================================================
-  // Helpery: flatten/expand
-  // =========================================================================
-  _flattenDots(obj, prefix = "") {
-    const res = {};
-    for (const [k, v] of Object.entries(obj || {})) {
-      const key = prefix ? `${prefix}.${k}` : k;
-      if (v && typeof v === "object" && !Array.isArray(v)) Object.assign(res, this._flattenDots(v, key));
-      else res[key] = v;
-    }
-    return res;
-  }
-
-  _expandDots(obj) {
-    const res = {};
-    for (const [key, value] of Object.entries(obj || {})) {
-      const parts = key.split(".");
-      parts.reduce((acc, part, idx) => {
-        if (idx === parts.length - 1) acc[part] = value;
-        else acc[part] = acc[part] || {};
-        return acc[part];
-      }, res);
-    }
-    return res;
-  }
-
-  get value() {
-    return this._config;
-  }
-
-  focus() {}
 }
 
 customElements.define("matches-card-editor", MatchesCardEditor);
+console.info("[MatchesCardEditor] v0.3.008 loaded ✅");

@@ -5,10 +5,10 @@
   "render_readme": true,
   "hide_default_branch": true,
   "country": "PL",
-  "homeassistant": "2024.6.0",
+  "homeassistant": "2025.10.0",
   "persistent_directory": "www/community/matches-card",
   "zip_release": false,
-  "version": "0.3.009",
+  "version": "0.3.011",
   "resources": [
     {
       "file": "matches-card.js",

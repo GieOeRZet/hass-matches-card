@@ -1,5 +1,5 @@
 // ============================================================================
-//  Matches Card Editor – v0.3.006-UI
+//  Matches Card Editor – v0.3.006b
 //  - Sekcja „Zaawansowane” (rozwijana)
 //  - Warunkowe pola gradientu
 //  - Tooltipy (computeHelper)
@@ -8,13 +8,28 @@
 //  - Mini podgląd (pierwszy mecz z encji)
 // ============================================================================
 
-// 🔹 importujemy komponenty HA i Material Web Components
-import "@material/mwc-button";
-import "@material/mwc-switch";
-import "@material/mwc-formfield";
-import "@polymer/paper-input/paper-input.js";
+console.info(
+  "%c[MatchesCardEditor] v0.3.006b loaded",
+  "color:#3ba55d;font-weight:bold;"
+);
 
+// Pomocnicze logi
+if (!customElements.get("mwc-button"))
+  console.warn("[MatchesCardEditor] mwc-button not preloaded yet (HA will inject it)");
+if (!customElements.get("ha-form"))
+  console.warn("[MatchesCardEditor] ha-form not yet registered, waiting for frontend...");
 
+// 🔹 Pomocnicza funkcja oczekiwania na ha-form
+async function waitForHaForm() {
+  for (let i = 0; i < 30; i++) {
+    if (customElements.get("ha-form")) return true;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  console.warn("[MatchesCardEditor] ha-form not ready after 3s");
+  return false;
+}
+
+// Domyślna konfiguracja
 const DEFAULTS = {
   name: "90minut Matches",
   show_name: true,
@@ -27,6 +42,7 @@ const DEFAULTS = {
   colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
 };
 
+// Pomocnicze zdarzenie config-changed
 const fireEvent = (node, type, detail, options) => {
   options = options || {};
   detail = detail === null || detail === undefined ? {} : detail;
@@ -40,6 +56,9 @@ const fireEvent = (node, type, detail, options) => {
   return event;
 };
 
+// ============================================================================
+//  Klasa edytora
+// ============================================================================
 class MatchesCardEditor extends HTMLElement {
   static get properties() {
     return { hass: {}, _config: {}, _error: {}, _showAdvanced: {} };
@@ -53,6 +72,7 @@ class MatchesCardEditor extends HTMLElement {
     this._showAdvanced = false;
   }
 
+  // ---------- Konfiguracja ----------
   setConfig(config) {
     this._config = {
       ...DEFAULTS,
@@ -62,7 +82,9 @@ class MatchesCardEditor extends HTMLElement {
       gradient: { ...DEFAULTS.gradient, ...(config?.gradient || {}) },
       colors: { ...DEFAULTS.colors, ...(config?.colors || {}) },
     };
-    this._render();
+
+    // ⏳ Poczekaj, aż HA załaduje ha-form
+    waitForHaForm().then(() => this._render());
   }
 
   // ---------- Schemat podstawowy ----------
@@ -136,6 +158,7 @@ class MatchesCardEditor extends HTMLElement {
     return s;
   }
 
+  // ---------- Etykiety ----------
   _computeLabel(schema) {
     const map = {
       entity: "Encja z meczami",
@@ -185,6 +208,7 @@ class MatchesCardEditor extends HTMLElement {
     return "";
   }
 
+  // ---------- Narzędzia do mapowania obiektów ----------
   _inflateDots(obj) {
     const base = JSON.parse(JSON.stringify(this._config || {}));
     const setByPath = (root, path, val) => {
@@ -216,6 +240,7 @@ class MatchesCardEditor extends HTMLElement {
     return out;
   }
 
+  // ---------- Zmiana wartości ----------
   _onValueChanged(ev) {
     const merged = this._inflateDots(ev.detail.value);
     const err = this._validate(merged);
@@ -238,6 +263,7 @@ class MatchesCardEditor extends HTMLElement {
     this._render();
   }
 
+  // ---------- Podgląd ----------
   _renderPreview() {
     const hass = this.hass;
     const cfg = this._config;
@@ -261,6 +287,7 @@ class MatchesCardEditor extends HTMLElement {
     </div>`;
   }
 
+  // ---------- Render ----------
   _render() {
     if (!this.shadowRoot) return;
     const style = `

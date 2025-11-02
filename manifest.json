@@ -1,14 +1,7 @@
 {
-  "domain": "matches_card",
   "name": "Matches Card (90minut)",
-  "documentation": "https://github.com/GieOeRZet/matches-card",
-  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
+  "filename": "matches-card.js",
   "version": "0.3.001",
-  "requirements": [],
-  "dependencies": [],
-  "codeowners": ["@GieOeRZet"],
-  "frontend": true,
-  "iot_class": "local_polling",
   "resources": [
     { "type": "module", "url": "/hacsfiles/matches-card/matches-card.js" },
     { "type": "module", "url": "/hacsfiles/matches-card/matches-card-editor.js" }

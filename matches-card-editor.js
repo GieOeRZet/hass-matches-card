@@ -1,57 +1,78 @@
 // ============================================================================
-//  Matches Card (90minut) – GUI Editor v0.3.001
+//  Matches Card Editor – v0.3.001
 // ============================================================================
 
 class MatchesCardEditor extends HTMLElement {
   setConfig(config) {
-    this._config = config;
+    this._config = config || {};
   }
 
-  _updateConfig(changes) {
-    this._config = { ...this._config, ...changes };
-    const e = new Event("config-changed", { bubbles: true, composed: true });
-    e.detail = { config: this._config };
-    this.dispatchEvent(e);
+  _update(e) {
+    if (!this._config) return;
+    const target = e.target;
+    const value =
+      target.type === "checkbox" ? target.checked : target.value;
+    this._config = { ...this._config, [target.name]: value };
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config: this._config },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   render() {
     if (!this._config) return;
-    const cfg = this._config;
+    return `
+      <div class="card-config">
+        <paper-input label="Encja" name="entity" value="${
+          this._config.entity || ""
+        }" oninput="_update(event)"></paper-input>
+        <paper-input label="Nazwa" name="name" value="${
+          this._config.name || ""
+        }" oninput="_update(event)"></paper-input>
 
-    return html`
-      <ha-form
-        .schema=${[
-          { name: "entity", label: "Encja", selector: { entity: { domain: "sensor" } } },
-          { name: "name", label: "Nazwa karty", selector: { text: {} } },
-          { name: "show_name", label: "Pokaż nazwę karty", selector: { boolean: {} } },
-          { name: "show_logos", label: "Pokaż herby drużyn", selector: { boolean: {} } },
-          { name: "full_team_names", label: "Pełne nazwy drużyn", selector: { boolean: {} } },
-          { name: "show_symbols", label: "W/P/R symbole", selector: { boolean: {} } },
-          {
-            name: "fill",
-            label: "Wypełnienie",
-            selector: { select: { options: ["system", "zebra", "gradient"] } },
-          },
-          {
-            name: "gradient.start",
-            label: "Start gradientu (%)",
-            selector: { number: { min: 0, max: 100, step: 1 } },
-          },
-          {
-            name: "gradient.alpha",
-            label: "Przezroczystość gradientu (0–1)",
-            selector: { number: { min: 0, max: 1, step: 0.05 } },
-          }
-        ]}
-        .data=${cfg}
-        @value-changed=${(e) => this._updateConfig(e.detail.value)}
-      ></ha-form>
+        <ha-select label="Wypełnienie" name="fill" value="${
+          this._config.fill || "gradient"
+        }" onchange="_update(event)">
+          <mwc-list-item value="gradient">Gradient</mwc-list-item>
+          <mwc-list-item value="zebra">Zebra</mwc-list-item>
+          <mwc-list-item value="none">Bez wypełnienia</mwc-list-item>
+        </ha-select>
+
+        <ha-formfield label="Pokaż loga">
+          <ha-switch name="show_logos" ${
+            this._config.show_logos ? "checked" : ""
+          } onchange="_update(event)"></ha-switch>
+        </ha-formfield>
+
+        <ha-formfield label="Pokaż symbole W/P/R">
+          <ha-switch name="show_result_symbol" ${
+            this._config.show_result_symbol ? "checked" : ""
+          } onchange="_update(event)"></ha-switch>
+        </ha-formfield>
+
+        <paper-input
+          label="Gradient start (%)"
+          name="gradient.start"
+          type="number"
+          value="${this._config.gradient?.start || 35}"
+          oninput="_update(event)"
+        ></paper-input>
+        <paper-input
+          label="Gradient alpha (0–1)"
+          name="gradient.alpha"
+          type="number"
+          value="${this._config.gradient?.alpha || 0.5}"
+          oninput="_update(event)"
+        ></paper-input>
+      </div>
     `;
   }
 
-  set hass(hass) {
-    this._hass = hass;
+  connectedCallback() {
+    this.innerHTML = this.render();
   }
 }
-
 customElements.define("matches-card-editor", MatchesCardEditor);

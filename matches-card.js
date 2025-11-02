@@ -1,8 +1,12 @@
 // ============================================================================
-//  Matches Card – v0.3.001 (z dynamicznym GUI loaderem)
+//  Matches Card – v0.3.006
+//  - Poprawiony gradient (RGBA zamiast błędnego HEX+alpha)
+//  - Dynamiczny import GUI edytora
+//  - Stub config dla kreatora HA
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
+  // ======================== KONFIGURACJA ========================
   setConfig(config) {
     if (!config.entity) throw new Error("Entity is required");
     this.config = {
@@ -19,6 +23,18 @@ class MatchesCard extends HTMLElement {
     };
   }
 
+  // ======================== HELPER RGBA ========================
+  _hexToRgba(hex, alpha = 1) {
+    if (!hex) return "rgba(0,0,0,0)";
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return hex; // np. już rgba()
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // ======================== RENDEROWANIE ========================
   set hass(hass) {
     this._hass = hass;
     const entity = this.config.entity;
@@ -82,8 +98,10 @@ class MatchesCard extends HTMLElement {
             : null;
 
         const fillStyle =
-          this.config.fill === "gradient"
-            ? `background:linear-gradient(to right,rgba(0,0,0,0) ${this.config.gradient.start}%,${m.result ? this.config.colors[m.result] : "rgba(0,0,0,0)"}${m.result ? this.config.gradient.alpha : 0} 100%);`
+          this.config.fill === "gradient" && m.result
+            ? `background:linear-gradient(to right,
+                rgba(0,0,0,0) ${this.config.gradient.start}%,
+                ${this._hexToRgba(this.config.colors[m.result], this.config.gradient.alpha)} 100%)`
             : "";
 
         return `
@@ -126,16 +144,12 @@ class MatchesCard extends HTMLElement {
     this.innerHTML = `${style}<ha-card ${title}><table>${rows}</table></ha-card>`;
   }
 
-  // ============================================================================
-  //  Konfiguracja GUI – dynamiczny import edytora + stub config
-  // ============================================================================
+  // ======================== GUI EDYTOR ========================
   static async getConfigElement() {
     try {
-      // 🔹 Dynamiczny import – ładuje edytor tylko gdy otwierasz GUI
       await import("./matches-card-editor.js");
       return document.createElement("matches-card-editor");
     } catch (e) {
-      // 🔹 Fallback – jeśli edytor się nie wczyta
       const el = document.createElement("hui-error-card");
       el.setConfig({
         error: "Editor not loaded (matches-card-editor.js)",
@@ -145,7 +159,6 @@ class MatchesCard extends HTMLElement {
     }
   }
 
-  // 🔹 Domyślna konfiguracja (stub) widoczna przy „Dodaj kartę”
   static getStubConfig() {
     return {
       entity: "sensor.matches_example",
@@ -156,6 +169,7 @@ class MatchesCard extends HTMLElement {
   }
 }
 
+// ======================== REJESTRACJA ========================
 customElements.define("matches-card", MatchesCard);
 window.customCards = window.customCards || [];
 window.customCards.push({

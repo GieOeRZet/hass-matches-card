@@ -1,23 +1,16 @@
 // ============================================================================
-//  Matches Card Editor – v0.3.008b
-//  - Naprawa błędu .bind(undefined)
-//  - Usunięty tryb demo
-//  - Pełna kompatybilność z matches-card.js v0.3.008
-//  - Automatyczne ładowanie przez HACS (resource entry)
+//  Matches Card Editor – v0.3.009
+//  ✅ Kompatybilny z HACS i Home Assistant (frontend core)
+//  ✅ Bez importów z @material / @polymer
+//  ✅ Automatyczne ładowanie z matches-card.js (dynamic import)
+//  ✅ Naprawia błąd „Cannot read properties of undefined (reading 'bind')”
 // ============================================================================
 
-import "@material/mwc-button";
-import "@material/mwc-switch";
-import "@material/mwc-formfield";
-import "@polymer/paper-input/paper-input.js";
+console.info("%c[MatchesCardEditor] v0.3.009 loaded", "color: #1E90FF; font-weight: bold;");
 
 class MatchesCardEditor extends HTMLElement {
   static get properties() {
-    return {
-      hass: {},
-      _config: {},
-      _showAdvanced: { type: Boolean },
-    };
+    return { hass: {}, _config: {}, _showAdvanced: {} };
   }
 
   constructor() {
@@ -29,107 +22,120 @@ class MatchesCardEditor extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
-    this._render();
-  }
-
-  _render() {
-    if (!this.shadowRoot) return;
-
-    const style = `
-      <style>
-        :host { display: block; font-family: var(--paper-font-body1_-_font-family); }
-        .card-config { padding: 12px 16px; }
-        .section { margin-top: 16px; }
-        .section h3 { margin: 8px 0; font-size: 1em; opacity: 0.8; }
-        ha-form { display: block; margin-top: 8px; }
-      </style>`;
-
-    const schema = [
-      { name: "entity", label: "Encja (sensor.90minut...)", selector: { entity: {} } },
-      { name: "fill", label: "Tryb wypełnienia", selector: { select: {
-        options: ["gradient", "zebra", "none"] } } },
-      { name: "show_logos", label: "Pokaż loga drużyn", selector: { boolean: {} } },
-      { name: "show_result_symbol", label: "Pokaż symbol wyniku", selector: { boolean: {} } },
-      { name: "gradient.alpha", label: "Przezroczystość gradientu (0–1)", selector: { number: { min: 0, max: 1, step: 0.1 } } },
-      { name: "gradient.start", label: "Początek gradientu (%)", selector: { number: { min: 0, max: 100, step: 1 } } },
-      { name: "gradient.end", label: "Koniec gradientu (%)", selector: { number: { min: 0, max: 100, step: 1 } } },
-    ];
-
-    this.shadowRoot.innerHTML = `
-      ${style}
-      <div class="card-config">
-        <ha-form .hass="${this.hass}" .schema="${schema}" .data="${this._config}"></ha-form>
-        <div class="section">
-          <mwc-button @click="${() => this._toggleAdvanced()}">
-            ${this._showAdvanced ? "Ukryj zaawansowane" : "Pokaż zaawansowane"}
-          </mwc-button>
-          ${this._showAdvanced ? this._renderAdvanced() : ""}
-        </div>
-        <div style="margin-top:12px;">
-          <mwc-button outlined @click="${() => this._resetDefaults()}">Przywróć domyślne</mwc-button>
-        </div>
-      </div>
-    `;
-
-    // 🔧 ha-form musi być dostępny zanim podpinamy event
-    setTimeout(() => {
-      const haForm = this.shadowRoot.querySelector("ha-form");
-      if (haForm && this._config) {
-        haForm.addEventListener("value-changed", (ev) => this._valueChanged(ev));
-      }
-    }, 100);
-  }
-
-  _renderAdvanced() {
-    return `
-      <div class="section">
-        <h3>Kolory wyników</h3>
-        <ha-form
-          .hass="${this.hass}"
-          .schema="${[
-            { name: 'colors.win', label: 'Wygrana', selector: { color_rgb: {} } },
-            { name: 'colors.draw', label: 'Remis', selector: { color_rgb: {} } },
-            { name: 'colors.loss', label: 'Porażka', selector: { color_rgb: {} } },
-          ]}"
-          .data="${this._config}"
-        ></ha-form>
-      </div>
-    `;
-  }
-
-  _valueChanged(ev) {
-    ev.stopPropagation();
-    const target = ev.detail.value || {};
-    this._config = { ...this._config, ...target };
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
-  }
-
-  _toggleAdvanced() {
-    this._showAdvanced = !this._showAdvanced;
-    this._render();
-  }
-
-  _resetDefaults() {
-    this._config = {
-      fill: "gradient",
-      gradient: { alpha: 0.5, start: 30, end: 100 },
-      show_logos: true,
-      show_result_symbol: true,
-      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
-    };
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
-    this._render();
+    this.render();
   }
 
   set hass(hass) {
     this._hass = hass;
-    if (this.shadowRoot) this._render();
+    this.render();
   }
 
   get hass() {
     return this._hass;
   }
+
+  _onValueChanged(ev) {
+    const target = ev.target;
+    if (!this._config || !target) return;
+    const newConfig = { ...this._config, [target.configValue]: target.value };
+    this._config = newConfig;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig } }));
+  }
+
+  _toggleAdvanced() {
+    this._showAdvanced = !this._showAdvanced;
+    this.render();
+  }
+
+  _resetDefaults() {
+    const defaults = { entity: "", show_gradient: true, team_badge: true };
+    this._config = defaults;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: defaults } }));
+    this.render();
+  }
+
+  render() {
+    if (!this.shadowRoot) return;
+
+    // fallback – czekamy na komponenty HA
+    if (!window.customElements.get("ha-textfield")) {
+      this.shadowRoot.innerHTML = `<div style="padding:8px;">Ładowanie komponentów...</div>`;
+      setTimeout(() => this.render(), 500);
+      return;
+    }
+
+    const cfg = this._config;
+    const adv = this._showAdvanced;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          padding: 8px 10px;
+          color: var(--primary-text-color);
+        }
+        ha-textfield {
+          display: block;
+          margin-bottom: 12px;
+        }
+        .buttons {
+          margin-top: 12px;
+          display: flex;
+          gap: 10px;
+        }
+        mwc-button {
+          --mdc-theme-primary: var(--accent-color);
+        }
+        .adv {
+          margin-top: 10px;
+          padding: 10px;
+          border-radius: 8px;
+          background: rgba(130,130,130,0.1);
+        }
+      </style>
+
+      <ha-textfield
+        label="Encja (sensor)"
+        .value="${cfg.entity || ""}"
+        .configValue="entity"
+        @input="${(e) => this._onValueChanged(e)}"
+      ></ha-textfield>
+
+      <ha-switch
+        .checked="${cfg.show_gradient ?? true}"
+        .configValue="show_gradient"
+        @change="${(e) => this._onValueChanged({ target: { configValue: 'show_gradient', value: e.target.checked } })}"
+      ></ha-switch>
+      <label>Włącz gradient tła</label>
+
+      <div class="buttons">
+        <mwc-button @click="${() => this._toggleAdvanced()}">
+          ${adv ? "Ukryj zaawansowane" : "Pokaż zaawansowane"}
+        </mwc-button>
+        <mwc-button @click="${() => this._resetDefaults()}">
+          Przywróć domyślne
+        </mwc-button>
+      </div>
+
+      ${adv ? `
+        <div class="adv">
+          <ha-switch
+            .checked="${cfg.team_badge ?? true}"
+            .configValue="team_badge"
+            @change="${(e) => this._onValueChanged({ target: { configValue: 'team_badge', value: e.target.checked } })}"
+          ></ha-switch>
+          <label>Pokazuj logo drużyny</label>
+
+          <ha-textfield
+            label="Kolor gradientu (CSS)"
+            .value="${cfg.gradient_color || 'linear-gradient(135deg, #1e3c72, #2a5298)'}"
+            .configValue="gradient_color"
+            @input="${(e) => this._onValueChanged(e)}"
+          ></ha-textfield>
+        </div>
+      ` : ""}
+    `;
+  }
 }
 
 customElements.define("matches-card-editor", MatchesCardEditor);
-console.info("%c [MatchesCardEditor] v0.3.008b loaded", "color: #7ac943; font-weight: bold;");

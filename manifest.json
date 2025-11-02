@@ -1,7 +1,9 @@
 {
   "name": "Matches Card (90minut)",
   "filename": "matches-card.js",
-  "version": "0.3.005",
+  "version": "0.3.006",
+  "domain": "matches_card",
+  "render_readme": true,
   "resources": [
     { "type": "module", "url": "/hacsfiles/matches-card/matches-card.js" },
     { "type": "module", "url": "/hacsfiles/matches-card/matches-card-editor.js" }

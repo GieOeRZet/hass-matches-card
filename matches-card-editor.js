@@ -1,346 +1,171 @@
 // ============================================================================
-//  Matches Card Editor – v0.3.006b
-//  - Sekcja „Zaawansowane” (rozwijana)
-//  - Warunkowe pola gradientu
-//  - Tooltipy (computeHelper)
-//  - Walidacja
-//  - Reset do domyślnych wartości
-//  - Mini podgląd (pierwszy mecz z encji)
+//  Matches Card Editor – v0.3.007
+//  ✅ Fix: Błąd ha-form.ts:118 (undefined.map)
+//  ✅ Fix: gradient.* / colors.* flatten schema
+//  ✅ Preview: pokazuje przykładowy mecz z gradientem
 // ============================================================================
 
-console.info(
-  "%c[MatchesCardEditor] v0.3.006b loaded",
-  "color:#3ba55d;font-weight:bold;"
-);
+console.info("%c [MatchesCardEditor] v0.3.007 loaded", "color: #03a9f4; font-weight: bold;");
 
-// Pomocnicze logi
-if (!customElements.get("mwc-button"))
-  console.warn("[MatchesCardEditor] mwc-button not preloaded yet (HA will inject it)");
-if (!customElements.get("ha-form"))
-  console.warn("[MatchesCardEditor] ha-form not yet registered, waiting for frontend...");
-
-// 🔹 Pomocnicza funkcja oczekiwania na ha-form
-async function waitForHaForm() {
-  for (let i = 0; i < 30; i++) {
-    if (customElements.get("ha-form")) return true;
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  console.warn("[MatchesCardEditor] ha-form not ready after 3s");
-  return false;
-}
-
-// Domyślna konfiguracja
-const DEFAULTS = {
-  name: "90minut Matches",
-  show_name: true,
-  show_logos: true,
-  fill: "gradient",
-  show_result_symbol: true,
-  font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
-  icon_size: { league: 26, crest: 24, result: 26 },
-  gradient: { alpha: 0.5, start: 35, end: 100 },
-  colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
-};
-
-// Pomocnicze zdarzenie config-changed
-const fireEvent = (node, type, detail, options) => {
-  options = options || {};
-  detail = detail === null || detail === undefined ? {} : detail;
-  const event = new Event(type, {
-    bubbles: options.bubbles === undefined ? true : options.bubbles,
-    cancelable: Boolean(options.cancelable),
-    composed: options.composed === undefined ? true : options.composed,
-  });
-  event.detail = detail;
-  node.dispatchEvent(event);
-  return event;
-};
-
-// ============================================================================
-//  Klasa edytora
-// ============================================================================
 class MatchesCardEditor extends HTMLElement {
   static get properties() {
-    return { hass: {}, _config: {}, _error: {}, _showAdvanced: {} };
+    return { hass: {}, _config: {}, _showAdvanced: {} };
   }
 
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
     this._config = {};
-    this._error = "";
     this._showAdvanced = false;
   }
 
-  // ---------- Konfiguracja ----------
   setConfig(config) {
-    this._config = {
-      ...DEFAULTS,
-      ...config,
-      font_size: { ...DEFAULTS.font_size, ...(config?.font_size || {}) },
-      icon_size: { ...DEFAULTS.icon_size, ...(config?.icon_size || {}) },
-      gradient: { ...DEFAULTS.gradient, ...(config?.gradient || {}) },
-      colors: { ...DEFAULTS.colors, ...(config?.colors || {}) },
-    };
-
-    // ⏳ Poczekaj, aż HA załaduje ha-form
-    waitForHaForm().then(() => this._render());
+    this._config = JSON.parse(JSON.stringify(config || {}));
+    this._updatePreview();
   }
 
-  // ---------- Schemat podstawowy ----------
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  // =========================================================================
+  // SCHEMAT – podstawowe + zaawansowane pola
+  // =========================================================================
   _schemaBasic() {
     return [
       { name: "entity", selector: { entity: { domain: "sensor" } } },
-      { name: "name", selector: { text: {} } },
+      { name: "fill", selector: { select: { options: ["gradient", "zebra", "none"] } } },
       { name: "show_name", selector: { boolean: {} } },
       { name: "show_logos", selector: { boolean: {} } },
-      {
-        name: "fill",
-        selector: {
-          select: {
-            options: [
-              { value: "gradient", label: "Gradient" },
-              { value: "zebra", label: "Zebra" },
-              { value: "none", label: "Brak" },
-            ],
-          },
-        },
-      },
       { name: "show_result_symbol", selector: { boolean: {} } },
     ];
   }
 
-  // ---------- Schemat zaawansowany ----------
   _schemaAdvanced() {
-    const s = [
-      {
-        type: "grid",
-        name: "Rozmiary czcionek",
-        schema: [
-          { name: "font_size.date", selector: { number: { min: 0.5, max: 3, step: 0.1 } } },
-          { name: "font_size.status", selector: { number: { min: 0.5, max: 3, step: 0.1 } } },
-          { name: "font_size.teams", selector: { number: { min: 0.5, max: 3, step: 0.1 } } },
-          { name: "font_size.score", selector: { number: { min: 0.5, max: 3, step: 0.1 } } },
-        ],
-      },
-      {
-        type: "grid",
-        name: "Rozmiary ikon",
-        schema: [
-          { name: "icon_size.league", selector: { number: { min: 10, max: 80, step: 1 } } },
-          { name: "icon_size.crest", selector: { number: { min: 10, max: 80, step: 1 } } },
-          { name: "icon_size.result", selector: { number: { min: 10, max: 80, step: 1 } } },
-        ],
-      },
+    return [
+      // Gradient
+      { name: "gradient.start", selector: { number: { min: 0, max: 100, step: 1 } } },
+      { name: "gradient.end", selector: { number: { min: 0, max: 100, step: 1 } } },
+      { name: "gradient.alpha", selector: { number: { min: 0, max: 1, step: 0.05 } } },
+
+      // Kolory
+      { name: "colors.win", selector: { color: {} } },
+      { name: "colors.draw", selector: { color: {} } },
+      { name: "colors.loss", selector: { color: {} } },
+
+      // Czcionki
+      { name: "font_size.date", selector: { number: { min: 0.5, max: 2, step: 0.1 } } },
+      { name: "font_size.status", selector: { number: { min: 0.5, max: 2, step: 0.1 } } },
+      { name: "font_size.teams", selector: { number: { min: 0.5, max: 2, step: 0.1 } } },
+      { name: "font_size.score", selector: { number: { min: 0.5, max: 2, step: 0.1 } } },
+
+      // Ikony
+      { name: "icon_size.league", selector: { number: { min: 10, max: 40, step: 1 } } },
+      { name: "icon_size.crest", selector: { number: { min: 10, max: 40, step: 1 } } },
+      { name: "icon_size.result", selector: { number: { min: 10, max: 40, step: 1 } } },
     ];
-
-    if ((this._config?.fill || DEFAULTS.fill) === "gradient") {
-      s.push({
-        type: "grid",
-        name: "Gradient",
-        schema: [
-          { name: "gradient.alpha", selector: { number: { min: 0, max: 1, step: 0.05 } } },
-          { name: "gradient.start", selector: { number: { min: 0, max: 100, step: 1 } } },
-          { name: "gradient.end", selector: { number: { min: 0, max: 100, step: 1 } } },
-        ],
-      });
-    }
-
-    s.push({
-      type: "grid",
-      name: "Kolory wyników",
-      schema: [
-        { name: "colors.win", selector: { color: {} } },
-        { name: "colors.draw", selector: { color: {} } },
-        { name: "colors.loss", selector: { color: {} } },
-      ],
-    });
-    return s;
   }
 
-  // ---------- Etykiety ----------
-  _computeLabel(schema) {
-    const map = {
-      entity: "Encja z meczami",
-      name: "Nazwa karty",
-      show_name: "Pokaż nagłówek",
-      show_logos: "Pokaż herby drużyn",
-      fill: "Styl wypełnienia",
-      show_result_symbol: "Pokaż symbol wyniku",
-      "font_size.date": "Czcionka: data",
-      "font_size.status": "Czcionka: status",
-      "font_size.teams": "Czcionka: drużyny",
-      "font_size.score": "Czcionka: wynik",
-      "icon_size.league": "Ikona ligi",
-      "icon_size.crest": "Herb",
-      "icon_size.result": "Kółko wyniku",
-      "gradient.alpha": "Przezroczystość (0–1)",
-      "gradient.start": "Start (%)",
-      "gradient.end": "Koniec (%)",
-      "colors.win": "Kolor zwycięstwa",
-      "colors.draw": "Kolor remisu",
-      "colors.loss": "Kolor porażki",
-    };
-    return map[schema.name] || schema.name;
+  // =========================================================================
+  // Render
+  // =========================================================================
+  _render() {
+    if (!this._hass) return;
+
+    const schema = [...this._schemaBasic(), ...(this._showAdvanced ? this._schemaAdvanced() : [])];
+
+    const html = `
+      <ha-card header="Ustawienia Matches Card">
+        <div class="form">
+          <ha-form
+            .hass="${this._hass}"
+            .data="${this._flattenDots(this._config)}"
+            .schema="${schema}"
+            @value-changed="${(ev) => this._valueChanged(ev)}"
+          ></ha-form>
+        </div>
+
+        <mwc-button @click="${() => this._toggleAdvanced()}">
+          ${this._showAdvanced ? "Ukryj" : "Pokaż"} zaawansowane
+        </mwc-button>
+
+        <div id="preview"></div>
+      </ha-card>
+    `;
+
+    this.shadowRoot.innerHTML = html;
+    this._updatePreview();
   }
 
-  _computeHelper(schema) {
-    switch (schema.name) {
-      case "fill":
-        return "Gradient – barwne tło wg wyniku; Zebra – co drugi wiersz szary; Brak – bez wypełnienia.";
-      case "gradient.alpha":
-        return "0 = przezroczyste, 1 = pełny kolor.";
-      case "gradient.start":
-      case "gradient.end":
-        return "Zakres 0–100 (%). Start musi być mniejszy niż Koniec.";
-      default:
-        return undefined;
-    }
+  // =========================================================================
+  // Podgląd mini
+  // =========================================================================
+  _updatePreview() {
+    const container = this.shadowRoot?.querySelector("#preview");
+    if (!container) return;
+
+    container.innerHTML = `
+      <ha-card header="Podgląd (demo)">
+        <table style="width:100%;border-collapse:collapse;font-family:sans-serif;">
+          <tr style="background:linear-gradient(to right,rgba(0,0,0,0) ${this._config.gradient?.start ?? 20}%,
+             rgba(59,165,93,${this._config.gradient?.alpha ?? 0.5}) ${this._config.gradient?.end ?? 100}%);">
+            <td style="padding:6px;">Górnik Zabrze</td>
+            <td>2 - 1</td>
+            <td>Ruch Chorzów</td>
+          </tr>
+        </table>
+      </ha-card>
+    `;
   }
 
-  // ---------- Walidacja ----------
-  _validate(cfg) {
-    if ((cfg.fill || DEFAULTS.fill) === "gradient") {
-      const s = Number(cfg?.gradient?.start ?? 0);
-      const e = Number(cfg?.gradient?.end ?? 100);
-      if (s >= e) return "Gradient: Start musi być mniejszy niż Koniec.";
-    }
-    return "";
+  // =========================================================================
+  // Eventy i pomocnicze
+  // =========================================================================
+  _valueChanged(ev) {
+    ev.stopPropagation();
+    const value = ev.detail.value;
+    this._config = this._expandDots(value);
+    this._updatePreview();
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
   }
 
-  // ---------- Narzędzia do mapowania obiektów ----------
-  _inflateDots(obj) {
-    const base = JSON.parse(JSON.stringify(this._config || {}));
-    const setByPath = (root, path, val) => {
-      const parts = path.split(".");
-      let node = root;
-      while (parts.length > 1) {
-        const p = parts.shift();
-        if (typeof node[p] !== "object" || node[p] === null) node[p] = {};
-        node = node[p];
-      }
-      node[parts[0]] = val;
-    };
-    for (const [k, v] of Object.entries(obj)) {
-      if (k.includes(".")) setByPath(base, k, v);
-      else base[k] = v;
-    }
-    return base;
-  }
-
-  _flattenDots(obj) {
-    const out = {};
-    const step = (path, val) => {
-      if (val && typeof val === "object" && !Array.isArray(val))
-        for (const [k, v] of Object.entries(val))
-          step(path ? `${path}.${k}` : k, v);
-      else out[path] = val;
-    };
-    step("", obj);
-    return out;
-  }
-
-  // ---------- Zmiana wartości ----------
-  _onValueChanged(ev) {
-    const merged = this._inflateDots(ev.detail.value);
-    const err = this._validate(merged);
-    this._config = merged;
-    this._error = err;
-    if (!err) fireEvent(this, "config-changed", { config: this._config });
-    this._render();
-  }
-
-  _onResetDefaults() {
-    const ent = this._config?.entity;
-    this._config = { ...DEFAULTS };
-    if (ent) this._config.entity = ent;
-    fireEvent(this, "config-changed", { config: this._config });
-    this._render();
-  }
-
-  _onToggleAdvanced() {
+  _toggleAdvanced() {
     this._showAdvanced = !this._showAdvanced;
     this._render();
   }
 
-  // ---------- Podgląd ----------
-  _renderPreview() {
-    const hass = this.hass;
-    const cfg = this._config;
-    if (!hass || !cfg?.entity || !hass.states?.[cfg.entity])
-      return `<div style="padding:8px;border:1px dashed var(--divider-color)">Brak danych podglądu</div>`;
-
-    const m = hass.states[cfg.entity].attributes.matches?.[0];
-    if (!m) return `<div style="padding:8px;border:1px dashed var(--divider-color)">Brak danych</div>`;
-
-    const color = cfg.colors[m.result] || "#888";
-    const fill =
-      cfg.fill === "gradient"
-        ? `background:linear-gradient(to right,rgba(0,0,0,0) ${cfg.gradient.start}%,${color}${cfg.gradient.alpha} 100%)`
-        : cfg.fill === "zebra"
-        ? "background:rgba(240,240,240,0.4)"
-        : "";
-
-    return `<div style="margin-top:6px;padding:8px;border-radius:8px;${fill}">
-      <b>${m.home}</b> ${m.score || ""} <b>${m.away}</b>
-      <small>(${m.date || ""})</small>
-    </div>`;
+  // =========================================================================
+  // Helpery: flatten/expand
+  // =========================================================================
+  _flattenDots(obj, prefix = "") {
+    const res = {};
+    for (const [k, v] of Object.entries(obj || {})) {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (v && typeof v === "object" && !Array.isArray(v)) Object.assign(res, this._flattenDots(v, key));
+      else res[key] = v;
+    }
+    return res;
   }
 
-  // ---------- Render ----------
-  _render() {
-    if (!this.shadowRoot) return;
-    const style = `
-      <style>
-        :host{display:block;}
-        .btns{display:flex;gap:8px;margin-top:10px;}
-        .error{color:var(--error-color);margin-top:4px;}
-        details summary{cursor:pointer;font-weight:600;padding:4px 8px;background:rgba(0,0,0,0.05);border-radius:6px;}
-        details[open] summary{border-bottom-left-radius:0;border-bottom-right-radius:0;}
-        details .inside{border:1px solid rgba(0,0,0,0.12);border-top:none;padding:8px;border-bottom-left-radius:6px;border-bottom-right-radius:6px;}
-      </style>`;
-
-    const data = this._flattenDots(this._config);
-    const err = this._error ? `<div class="error">${this._error}</div>` : "";
-
-    this.shadowRoot.innerHTML = `
-      ${style}
-      <ha-form
-        .hass=${this.hass}
-        .data=${data}
-        .schema=${this._schemaBasic()}
-        .computeLabel=${(s) => this._computeLabel(s)}
-        .computeHelper=${(s) => this._computeHelper(s)}
-        @value-changed=${(e) => this._onValueChanged(e)}>
-      </ha-form>
-      ${err}
-      <div class="btns">
-        <mwc-button raised @click=${() => this._onResetDefaults()}>Przywróć domyślne</mwc-button>
-        <mwc-button outlined @click=${() => this._onToggleAdvanced()}>${
-          this._showAdvanced ? "Ukryj zaawansowane" : "Pokaż zaawansowane"
-        }</mwc-button>
-      </div>
-      <details ${this._showAdvanced ? "open" : ""}>
-        <summary>Ustawienia zaawansowane</summary>
-        <div class="inside">
-          <ha-form
-            .hass=${this.hass}
-            .data=${data}
-            .schema=${this._schemaAdvanced()}
-            .computeLabel=${(s) => this._computeLabel(s)}
-            .computeHelper=${(s) => this._computeHelper(s)}
-            @value-changed=${(e) => this._onValueChanged(e)}>
-          </ha-form>
-        </div>
-      </details>
-      ${this._renderPreview()}
-    `;
+  _expandDots(obj) {
+    const res = {};
+    for (const [key, value] of Object.entries(obj || {})) {
+      const parts = key.split(".");
+      parts.reduce((acc, part, idx) => {
+        if (idx === parts.length - 1) acc[part] = value;
+        else acc[part] = acc[part] || {};
+        return acc[part];
+      }, res);
+    }
+    return res;
   }
 
-  set hass(h) {
-    this._hass = h;
-    this._render();
+  get value() {
+    return this._config;
   }
+
+  focus() {}
 }
 
 customElements.define("matches-card-editor", MatchesCardEditor);

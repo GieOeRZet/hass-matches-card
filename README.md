@@ -42,20 +42,59 @@ ParametrTypOpisEncjapickerWybierz sensor 90minut_XXXXTytuł kartytekstDowolna na
 
 🧾 Przykład YAML
 Jeśli chcesz dodać kartę ręcznie w YAML:
+
 type: custom:matches-card
-entity: sensor.90minut_gornik_zabrze_matches
-name: Górnik Zabrze – Mecze
-show_logos: true
-hover_enabled: true
-hover_shadow_color: rgba(0, 0, 0, 0.25)
-alignment: left
-font_size: 14
-column_widths:
-  date: 12
-  league: 8
-  logo: 12
-  score: 10
-  result: 8
+entity: sensor.90minut_gornik_zabrze_matches   # 🟢 Sensor z atrybutem "matches" (np. z integracji 90minut.pl)
+
+# === PODSTAWOWE USTAWIENIA ===
+name: Górnik Zabrze – mecze                    # Nazwa widoczna w nagłówku karty
+show_name: true                                # Pokazuj nagłówek karty (true/false)
+show_logos: true                               # Pokazuj herby drużyn (true/false)
+full_team_names: true                          # Pełne nazwy drużyn zamiast skrótów (true/false)
+
+# === TRYB WYPEŁNIENIA WIERSZY ===
+fill: gradient                                 # Typ tła dla wierszy:
+                                               #   gradient → kolorowy gradient zależny od wyniku
+                                               #   zebra    → naprzemienne szare wiersze
+                                               #   system   → neutralny, czysty wygląd
+
+# === W/P/R – WYGRANA/REMIS/PORAŻKA ===
+show_symbols: true                             # Pokazuj kółko z literą W / P / R po prawej stronie (true/false)
+
+# === GRADIENT (aktywne tylko przy fill: gradient) ===
+gradient_start: 35                             # Początek gradientu (procent szerokości wiersza)
+gradient_alpha: 0.5                             # Przezroczystość koloru gradientu (0.0–1.0)
+
+# === CZCIONKI ===
+font_size_date: 0.9                            # Wielkość daty (em)
+font_size_status: 0.8                          # Wielkość napisu statusu (np. KONIEC)
+font_size_teams: 1.0                           # Wielkość nazw drużyn
+font_size_score: 1.0                           # Wielkość wyniku
+
+# === ROZMIARY IKON ===
+icon_size_league: 26                           # Wysokość ikony ligi (px)
+icon_size_crest: 24                            # Wysokość herbu drużyny (px)
+icon_size_result: 26                           # Średnica kółka W/P/R (px)
+
+# === KOLORY WYNIKÓW ===
+colors:
+  win: "#3ba55d"                               # Zielony – wygrana
+  loss: "#e23b3b"                              # Czerwony – porażka
+  draw: "#468cd2"                              # Niebieski – remis
+
+# === SZEROKOŚCI KOLUMN (w %) ===
+columns_pct:
+  date: 10                                     # Kolumna z datą i godziną
+  league: 10                                   # Kolumna z ligą / pucharem
+  crest: 10                                    # Kolumna z herbami
+  score: 10                                    # Kolumna z wynikiem
+  result: 8                                    # Kolumna z symbolem W/P/R
+
+# === STYL TABELI ===
+table:
+  zebra: true                                  # Efekt zebry (tylko przy fill=zebra)
+  separator: true                              # Cienka linia między wierszami (zawsze aktywna)
+  system_colors: true                          # Pozostawia systemowe kolory tła (nie zmienia globalnych stylów)
 
 
 🌗 Tryb ciemny i jasny
@@ -113,3 +152,4 @@ matches-card/
 Jeśli chcesz — mogę teraz pokazać Ci **jak dokładnie przygotować release (wersję)**,  
 żeby HACS automatycznie widział Twoją kartę jako aktualizowalną z repozytorium.  
 Czy chcesz, żebym Ci to rozpisał krok po kroku (wersjonowanie + tagi GitHub)?
+

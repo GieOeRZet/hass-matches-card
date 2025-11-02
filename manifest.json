@@ -1,19 +1,12 @@
 {
-  "name": "Matches Card (90minut.pl)",
-  "filename": "matches-card.js",
   "domain": "matches_card",
-  "version": "0.3.007",
-  "render_readme": true,
-  "homeassistant": "2024.6.0",
-  "iot_class": "local_push",
+  "name": "Matches Card (90minut)",
   "documentation": "https://github.com/GieOeRZet/matches-card",
   "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "frontend": {
-    "gui": true,
-    "js_modules": [
-      "/hacsfiles/matches-card/matches-card.js?v=0.3.007",
-      "/hacsfiles/matches-card/matches-card-editor.js?v=0.3.007"
-    ]
-  },
-  "requirements": []
+  "version": "0.3.008",
+  "requirements": [],
+  "codeowners": ["@GieOeRZet"],
+  "iot_class": "local_polling",
+  "integration_type": "hub",
+  "render_readme": true
 }

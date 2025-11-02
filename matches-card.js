@@ -1,5 +1,5 @@
 // ============================================================================
-//  Matches Card – v0.3.001
+//  Matches Card – v0.3.001 (z dynamicznym GUI loaderem)
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
@@ -126,10 +126,36 @@ class MatchesCard extends HTMLElement {
     this.innerHTML = `${style}<ha-card ${title}><table>${rows}</table></ha-card>`;
   }
 
-  static getConfigElement() {
-    return document.createElement("matches-card-editor");
+  // ============================================================================
+  //  Konfiguracja GUI – dynamiczny import edytora + stub config
+  // ============================================================================
+  static async getConfigElement() {
+    try {
+      // 🔹 Dynamiczny import – ładuje edytor tylko gdy otwierasz GUI
+      await import("./matches-card-editor.js");
+      return document.createElement("matches-card-editor");
+    } catch (e) {
+      // 🔹 Fallback – jeśli edytor się nie wczyta
+      const el = document.createElement("hui-error-card");
+      el.setConfig({
+        error: "Editor not loaded (matches-card-editor.js)",
+        origConfig: {},
+      });
+      return el;
+    }
+  }
+
+  // 🔹 Domyślna konfiguracja (stub) widoczna przy „Dodaj kartę”
+  static getStubConfig() {
+    return {
+      entity: "sensor.matches_example",
+      show_name: true,
+      show_logos: true,
+      fill: "gradient",
+    };
   }
 }
+
 customElements.define("matches-card", MatchesCard);
 window.customCards = window.customCards || [];
 window.customCards.push({

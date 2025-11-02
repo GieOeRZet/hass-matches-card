@@ -1,9 +1,9 @@
 // ============================================================================
-//  Matches Card – v0.3.008
-//  - Gradient RGBA fix
-//  - Safe define() check
-//  - Sync z edytorem v0.3.008
+//  Matches Card – v0.3.009
+//  Karta wyników 90minut.pl z gradientem i automatycznym GUI
 // ============================================================================
+
+console.info("%c[MatchesCard] v0.3.009 loaded ✅", "color: #0e9f6e; font-weight: bold;");
 
 if (!customElements.get("matches-card")) {
   class MatchesCard extends HTMLElement {
@@ -13,7 +13,7 @@ if (!customElements.get("matches-card")) {
         name: "90minut Matches",
         show_name: true,
         show_logos: true,
-        fill: "gradient",
+        fill: "gradient", // gradient | zebra | none
         show_result_symbol: true,
         font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
         icon_size: { league: 26, crest: 24, result: 26 },
@@ -31,16 +31,11 @@ if (!customElements.get("matches-card")) {
 
       const matches = stateObj.attributes.matches || [];
 
-      const hexToRgb = (hex) => {
-        const clean = hex.replace("#", "");
-        const bigint = parseInt(clean, 16);
-        return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
-      };
-
       const zebraCSS =
         this.config.fill === "zebra"
           ? `tr:nth-child(even){background-color:rgba(240,240,240,0.4);}`
           : "";
+      const separatorCSS = `tr{border-bottom:1px solid rgba(0,0,0,0.1);}`;
 
       const style = `
         <style>
@@ -54,8 +49,7 @@ if (!customElements.get("matches-card")) {
             height:${this.config.icon_size.result}px;color:white;
             display:flex;align-items:center;justify-content:center;font-weight:bold;
             margin:0 auto;}
-          ${zebraCSS}
-          tr{border-bottom:1px solid rgba(0,0,0,0.1);}
+          ${zebraCSS}${separatorCSS}
         </style>`;
 
       const rows = matches
@@ -93,14 +87,14 @@ if (!customElements.get("matches-card")) {
               ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/puchar.png"
               : null;
 
-          // 🔹 poprawny gradient RGBA
-          let fillStyle = "";
-          if (this.config.fill === "gradient" && m.result) {
-            const color = this.config.colors[m.result] || "#000000";
-            const [r, g, b] = hexToRgb(color);
-            const alpha = this.config.gradient?.alpha ?? 0.5;
-            fillStyle = `background:linear-gradient(to right, rgba(${r},${g},${b},0) ${this.config.gradient.start}%, rgba(${r},${g},${b},${alpha}) ${this.config.gradient.end}%);`;
-          }
+          const colorRGB = this.config.colors[m.result]
+            ? this.hexToRgba(this.config.colors[m.result], this.config.gradient.alpha)
+            : "rgba(0,0,0,0)";
+
+          const fillStyle =
+            this.config.fill === "gradient"
+              ? `background: linear-gradient(to right, rgba(0,0,0,0) ${this.config.gradient.start}%, ${colorRGB} ${this.config.gradient.end}%);`
+              : "";
 
           return `
             <tr class="${resultClass}" style="${fillStyle}">
@@ -139,22 +133,35 @@ if (!customElements.get("matches-card")) {
         this.config.show_name && this.config.name
           ? `header="${this.config.name}"`
           : "";
+
       this.innerHTML = `${style}<ha-card ${title}><table>${rows}</table></ha-card>`;
     }
 
+    hexToRgba(hex, alpha = 1) {
+      if (!hex || typeof hex !== "string") return `rgba(0,0,0,${alpha})`;
+      const sanitized = hex.replace("#", "");
+      const bigint = parseInt(sanitized, 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
     static getConfigElement() {
+      import("/hacsfiles/matches-card/matches-card-editor.js")
+        .then(() => console.log("[MatchesCard] Editor loaded dynamically"))
+        .catch((e) => console.warn("[MatchesCard] Editor import failed", e));
       return document.createElement("matches-card-editor");
     }
   }
 
   customElements.define("matches-card", MatchesCard);
+
   window.customCards = window.customCards || [];
   window.customCards.push({
     type: "matches-card",
     name: "Matches Card (90minut)",
     preview: true,
-    description: "Karta meczów 90minut.pl z edytorem GUI",
+    description: "Karta meczów 90minut.pl z gradientem i edytorem GUI",
   });
-
-  console.info("%c[MatchesCard] v0.3.008 loaded ✅", "color:#00b894");
 }

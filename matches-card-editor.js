@@ -1,141 +1,158 @@
-// ============================================================================
-//  Matches Card Editor – v0.3.009
-//  ✅ Kompatybilny z HACS i Home Assistant (frontend core)
-//  ✅ Bez importów z @material / @polymer
-//  ✅ Automatyczne ładowanie z matches-card.js (dynamic import)
-//  ✅ Naprawia błąd „Cannot read properties of undefined (reading 'bind')”
-// ============================================================================
+// matches-card-editor.js  v0.3.010
+// Minimalny, stabilny edytor bez podglądu demo. Działa od HA 2024.6+ (ha-form).
 
-console.info("%c[MatchesCardEditor] v0.3.009 loaded", "color: #1E90FF; font-weight: bold;");
+/* eslint-disable no-undef */
+import { LitElement, html, css } from "lit";
 
-class MatchesCardEditor extends HTMLElement {
+const DEFAULTS = {
+  entity: "",
+  fill: "gradient",            // "gradient" | "zebra" | "none"
+  gradient_enabled: true,      // dodatkowy toggle – można go zostawić na przyszłość
+  gradient_left: "rgba(0,0,0,0.0)",
+  gradient_right: "rgba(0,0,0,0.35)",
+  zebra_even: "rgba(0,0,0,0.00)",
+  zebra_odd: "rgba(0,0,0,0.06)",
+  zebra_opacity: 0.06
+};
+
+class MatchesCardEditor extends LitElement {
   static get properties() {
-    return { hass: {}, _config: {}, _showAdvanced: {} };
+    return {
+      hass: { attribute: false },
+      _config: { state: true },
+    };
   }
 
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-    this._config = {};
-    this._showAdvanced = false;
+  static get styles() {
+    return css`
+      .section { margin: 16px 0 8px; font-weight: 600; }
+      .hint { color: var(--secondary-text-color); font-size: 0.88em; }
+      ha-form { --spacing: 12px; }
+    `;
   }
 
   setConfig(config) {
-    this._config = config || {};
-    this.render();
+    // scalamy z domyślnymi (nic nie nadpisujemy jeśli przyjdzie z YAML)
+    this._config = { ...DEFAULTS, ...config };
   }
 
-  set hass(hass) {
-    this._hass = hass;
-    this.render();
+  // --- SCHEMAT HA-FORM (to wcześniej brakowało i stąd był błąd "map of undefined") ---
+  _schema() {
+    return [
+      {
+        name: "entity",
+        selector: { entity: { domain: "sensor" } },
+        required: true,
+      },
+      {
+        name: "fill",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: [
+              { value: "gradient", label: "Gradient" },
+              { value: "zebra", label: "Zebra" },
+              { value: "none", label: "Brak" },
+            ],
+          },
+        },
+      },
+      {
+        name: "gradient_enabled",
+        selector: { boolean: {} },
+        context: { nested: "gradient" },
+      },
+      // Kolory gradientu (pokazuj sensownie dla fill=gradient)
+      {
+        name: "gradient_left",
+        selector: { color: {} },
+        context: { show_if: { fill: "gradient" } },
+      },
+      {
+        name: "gradient_right",
+        selector: { color: {} },
+        context: { show_if: { fill: "gradient" } },
+      },
+      // Zebra
+      {
+        name: "zebra_even",
+        selector: { color: {} },
+        context: { show_if: { fill: "zebra" } },
+      },
+      {
+        name: "zebra_odd",
+        selector: { color: {} },
+        context: { show_if: { fill: "zebra" } },
+      },
+      {
+        name: "zebra_opacity",
+        selector: { number: { min: 0, max: 1, step: 0.01, mode: "box" } },
+        context: { show_if: { fill: "zebra" } },
+      },
+    ];
   }
 
-  get hass() {
-    return this._hass;
-  }
-
-  _onValueChanged(ev) {
-    const target = ev.target;
-    if (!this._config || !target) return;
-    const newConfig = { ...this._config, [target.configValue]: target.value };
-    this._config = newConfig;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig } }));
-  }
-
-  _toggleAdvanced() {
-    this._showAdvanced = !this._showAdvanced;
-    this.render();
-  }
-
-  _resetDefaults() {
-    const defaults = { entity: "", show_gradient: true, team_badge: true };
-    this._config = defaults;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: defaults } }));
-    this.render();
-  }
+  // HA woła to po polsku sam; jak chcesz twarde polskie etykiety — poniżej:
+  _label = (schema) => {
+    const map = {
+      entity: "Encja (sensor)",
+      fill: "Wypełnienie tła",
+      gradient_enabled: "Włącz gradient tła",
+      gradient_left: "Gradient — kolor lewy",
+      gradient_right: "Gradient — kolor prawy",
+      zebra_even: "Zebra — kolor parzystych",
+      zebra_odd: "Zebra — kolor nieparzystych",
+      zebra_opacity: "Zebra — krycie (0–1)",
+    };
+    return map[schema.name] ?? schema.name;
+  };
 
   render() {
-    if (!this.shadowRoot) return;
+    if (!this._config) return html``;
 
-    // fallback – czekamy na komponenty HA
-    if (!window.customElements.get("ha-textfield")) {
-      this.shadowRoot.innerHTML = `<div style="padding:8px;">Ładowanie komponentów...</div>`;
-      setTimeout(() => this.render(), 500);
-      return;
-    }
+    // prosty nagłówek + ha-form
+    return html`
+      <div class="section">Podstawowe</div>
+      <ha-form
+        .hass=${this.hass}
+        .data=${this._config}
+        .schema=${this._schema()}
+        .computeLabel=${this._label}
+        @value-changed=${this._valueChanged}>
+      </ha-form>
 
-    const cfg = this._config;
-    const adv = this._showAdvanced;
-
-    this.shadowRoot.innerHTML = `
-      <style>
-        :host {
-          display: block;
-          padding: 8px 10px;
-          color: var(--primary-text-color);
-        }
-        ha-textfield {
-          display: block;
-          margin-bottom: 12px;
-        }
-        .buttons {
-          margin-top: 12px;
-          display: flex;
-          gap: 10px;
-        }
-        mwc-button {
-          --mdc-theme-primary: var(--accent-color);
-        }
-        .adv {
-          margin-top: 10px;
-          padding: 10px;
-          border-radius: 8px;
-          background: rgba(130,130,130,0.1);
-        }
-      </style>
-
-      <ha-textfield
-        label="Encja (sensor)"
-        .value="${cfg.entity || ""}"
-        .configValue="entity"
-        @input="${(e) => this._onValueChanged(e)}"
-      ></ha-textfield>
-
-      <ha-switch
-        .checked="${cfg.show_gradient ?? true}"
-        .configValue="show_gradient"
-        @change="${(e) => this._onValueChanged({ target: { configValue: 'show_gradient', value: e.target.checked } })}"
-      ></ha-switch>
-      <label>Włącz gradient tła</label>
-
-      <div class="buttons">
-        <mwc-button @click="${() => this._toggleAdvanced()}">
-          ${adv ? "Ukryj zaawansowane" : "Pokaż zaawansowane"}
-        </mwc-button>
-        <mwc-button @click="${() => this._resetDefaults()}">
-          Przywróć domyślne
-        </mwc-button>
-      </div>
-
-      ${adv ? `
-        <div class="adv">
-          <ha-switch
-            .checked="${cfg.team_badge ?? true}"
-            .configValue="team_badge"
-            @change="${(e) => this._onValueChanged({ target: { configValue: 'team_badge', value: e.target.checked } })}"
-          ></ha-switch>
-          <label>Pokazuj logo drużyny</label>
-
-          <ha-textfield
-            label="Kolor gradientu (CSS)"
-            .value="${cfg.gradient_color || 'linear-gradient(135deg, #1e3c72, #2a5298)'}"
-            .configValue="gradient_color"
-            @input="${(e) => this._onValueChanged(e)}"
-          ></ha-textfield>
-        </div>
-      ` : ""}
+      <p class="hint">
+        Pola odzwierciedlają YAML: <code>entity</code>, <code>fill</code>,
+        <code>gradient_left/right</code>, <code>zebra_even/odd</code>, <code>zebra_opacity</code>.
+      </p>
     `;
+  }
+
+  _valueChanged(ev) {
+    ev.stopPropagation();
+    const newVal = ev.detail?.value ?? {};
+
+    // prosta zależność: jeśli fill ≠ gradient, wyłącz przełącznik gradientu
+    if (newVal.fill && newVal.fill !== "gradient") {
+      newVal.gradient_enabled = false;
+    }
+    // scal z istniejącą konfiguracją
+    const merged = { ...this._config, ...newVal };
+
+    // emituje standardowe zdarzenie wymagane przez HA
+    this._config = merged;
+    this.dispatchEvent(
+      new CustomEvent("config-changed", { detail: { config: merged } })
+    );
+  }
+
+  // Przydatne dla Lovelace GUI – widoczny tytuł
+  static getStubConfig() {
+    return { ...DEFAULTS, entity: "" };
   }
 }
 
-customElements.define("matches-card-editor", MatchesCardEditor);
+// Rejestracja elementu (bez błędu „already defined” przy hot-reload)
+if (!customElements.get("matches-card-editor")) {
+  customElements.define("matches-card-editor", MatchesCardEditor);
+}

@@ -3,7 +3,7 @@
   "name": "Matches Card (90minut)",
   "documentation": "https://github.com/GieOeRZet/matches-card",
   "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "version": "0.3.008",
+  "version": "0.3.009",
   "requirements": [],
   "codeowners": ["@GieOeRZet"],
   "iot_class": "local_polling",

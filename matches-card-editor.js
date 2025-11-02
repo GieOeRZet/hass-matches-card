@@ -8,6 +8,13 @@
 //  - Mini podgląd (pierwszy mecz z encji)
 // ============================================================================
 
+// 🔹 importujemy komponenty HA i Material Web Components
+import "@material/mwc-button";
+import "@material/mwc-switch";
+import "@material/mwc-formfield";
+import "@polymer/paper-input/paper-input.js";
+
+
 const DEFAULTS = {
   name: "90minut Matches",
   show_name: true,

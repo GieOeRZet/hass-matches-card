@@ -43,6 +43,8 @@ ParametrTypOpisEncjapickerWybierz sensor 90minut_XXXXTytuł kartytekstDowolna na
 🧾 Przykład YAML
 Jeśli chcesz dodać kartę ręcznie w YAML:
 
+
+
 type: custom:matches-card
 entity: sensor.90minut_gornik_zabrze_matches   # 🟢 Sensor z atrybutem "matches" (np. z integracji 90minut.pl)
 
@@ -152,4 +154,5 @@ matches-card/
 Jeśli chcesz — mogę teraz pokazać Ci **jak dokładnie przygotować release (wersję)**,  
 żeby HACS automatycznie widział Twoją kartę jako aktualizowalną z repozytorium.  
 Czy chcesz, żebym Ci to rozpisał krok po kroku (wersjonowanie + tagi GitHub)?
+
 

@@ -1,26 +1,23 @@
 // ============================================================================
-//  Matches Card Editor – v0.3.008
-//  - Pełny formularz konfiguracyjny (ha-form)
-//  - Naprawione ładowanie ha-form
-//  - Rozwijana sekcja zaawansowana
-//  - Podgląd demo z gradientem
+//  Matches Card Editor – v0.3.008b
+//  - Naprawa błędu .bind(undefined)
+//  - Usunięty tryb demo
+//  - Pełna kompatybilność z matches-card.js v0.3.008
+//  - Automatyczne ładowanie przez HACS (resource entry)
 // ============================================================================
 
 import "@material/mwc-button";
 import "@material/mwc-switch";
+import "@material/mwc-formfield";
 import "@polymer/paper-input/paper-input.js";
-
-// 🔧 Dynamiczne ładowanie ha-form, jeśli nie jest dostępne
-if (!customElements.get("ha-form")) {
-  import("../../../homeassistant-frontend/build/ha-form.js").catch((e) => {
-    console.warn("[MatchesCardEditor] ha-form not found yet, waiting...");
-    setTimeout(() => import("../../../homeassistant-frontend/build/ha-form.js"), 2000);
-  });
-}
 
 class MatchesCardEditor extends HTMLElement {
   static get properties() {
-    return { hass: {}, _config: {}, _showAdvanced: {} };
+    return {
+      hass: {},
+      _config: {},
+      _showAdvanced: { type: Boolean },
+    };
   }
 
   constructor() {
@@ -31,156 +28,108 @@ class MatchesCardEditor extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = {
-      name: "90minut Matches",
-      show_name: true,
-      show_logos: true,
-      fill: "gradient",
-      show_result_symbol: true,
-      font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
-      icon_size: { league: 26, crest: 24, result: 26 },
-      gradient: { alpha: 0.5, start: 35, end: 100 },
-      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
-      ...config,
-    };
+    this._config = config || {};
+    this._render();
   }
 
-  set hass(hass) {
-    this._hass = hass;
-    this.render();
-  }
-
-  _schema() {
-    const schema = [
-      {
-        name: "entity",
-        selector: { entity: { domain: "sensor" } },
-      },
-      {
-        name: "name",
-        label: "Tytuł karty",
-        selector: { text: {} },
-      },
-      {
-        name: "show_name",
-        label: "Pokaż tytuł",
-        selector: { boolean: {} },
-      },
-      {
-        name: "show_logos",
-        label: "Pokaż logotypy drużyn",
-        selector: { boolean: {} },
-      },
-      {
-        name: "fill",
-        label: "Styl wypełnienia wierszy",
-        selector: {
-          select: {
-            options: [
-              { label: "Gradient", value: "gradient" },
-              { label: "Zebra", value: "zebra" },
-              { label: "Brak", value: "none" },
-            ],
-          },
-        },
-      },
-      {
-        name: "show_result_symbol",
-        label: "Ikony wyników (W/D/L)",
-        selector: { boolean: {} },
-      },
-    ];
-
-    if (this._showAdvanced) {
-      schema.push(
-        { name: "gradient.alpha", label: "Przezroczystość gradientu (0–1)", selector: { number: { min: 0, max: 1, step: 0.1 } } },
-        { name: "gradient.start", label: "Start gradientu (%)", selector: { number: { min: 0, max: 100 } } },
-        { name: "gradient.end", label: "Koniec gradientu (%)", selector: { number: { min: 0, max: 100 } } },
-        { name: "colors.win", label: "Kolor zwycięstwa", selector: { color: {} } },
-        { name: "colors.loss", label: "Kolor porażki", selector: { color: {} } },
-        { name: "colors.draw", label: "Kolor remisu", selector: { color: {} } },
-        { name: "icon_size.league", label: "Rozmiar ikony ligi", selector: { number: { min: 10, max: 60 } } },
-        { name: "icon_size.crest", label: "Rozmiar herbu", selector: { number: { min: 10, max: 60 } } },
-        { name: "icon_size.result", label: "Rozmiar symbolu wyniku", selector: { number: { min: 10, max: 60 } } }
-      );
-    }
-
-    return schema;
-  }
-
-  render() {
-    if (!this._hass) return;
+  _render() {
+    if (!this.shadowRoot) return;
 
     const style = `
       <style>
-        ha-card {
-          display: block;
-          padding: 12px;
-        }
-        .buttons {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 10px;
-        }
-        .demo {
-          border-radius: 8px;
-          padding: 8px;
-          margin-top: 12px;
-          background: linear-gradient(to right, rgba(0,0,0,0) 35%, rgba(59,165,93,0.5) 100%);
-        }
-        .demo span {
-          font-weight: bold;
-          font-size: 1em;
-          color: white;
-        }
-      </style>
-    `;
+        :host { display: block; font-family: var(--paper-font-body1_-_font-family); }
+        .card-config { padding: 12px 16px; }
+        .section { margin-top: 16px; }
+        .section h3 { margin: 8px 0; font-size: 1em; opacity: 0.8; }
+        ha-form { display: block; margin-top: 8px; }
+      </style>`;
 
-    const demo = `
-      <div class="demo">
-        <span>Górnik Zabrze</span> &nbsp; <span>2 - 1</span> &nbsp; <span>Ruch Chorzów</span>
-      </div>
-    `;
+    const schema = [
+      { name: "entity", label: "Encja (sensor.90minut...)", selector: { entity: {} } },
+      { name: "fill", label: "Tryb wypełnienia", selector: { select: {
+        options: ["gradient", "zebra", "none"] } } },
+      { name: "show_logos", label: "Pokaż loga drużyn", selector: { boolean: {} } },
+      { name: "show_result_symbol", label: "Pokaż symbol wyniku", selector: { boolean: {} } },
+      { name: "gradient.alpha", label: "Przezroczystość gradientu (0–1)", selector: { number: { min: 0, max: 1, step: 0.1 } } },
+      { name: "gradient.start", label: "Początek gradientu (%)", selector: { number: { min: 0, max: 100, step: 1 } } },
+      { name: "gradient.end", label: "Koniec gradientu (%)", selector: { number: { min: 0, max: 100, step: 1 } } },
+    ];
 
     this.shadowRoot.innerHTML = `
       ${style}
-      <ha-card header="Ustawienia Matches Card">
-        <div class="buttons">
-          <mwc-button @click="${() => this._onToggleAdvanced()}">
+      <div class="card-config">
+        <ha-form .hass="${this.hass}" .schema="${schema}" .data="${this._config}"></ha-form>
+        <div class="section">
+          <mwc-button @click="${() => this._toggleAdvanced()}">
             ${this._showAdvanced ? "Ukryj zaawansowane" : "Pokaż zaawansowane"}
           </mwc-button>
-          <mwc-button @click="${() => this._onResetDefaults()}">Przywróć domyślne</mwc-button>
+          ${this._showAdvanced ? this._renderAdvanced() : ""}
         </div>
-        <ha-form
-          .hass=${this._hass}
-          .data=${this._config}
-          .schema=${this._schema()}
-          @value-changed=${(ev) => this._valueChanged(ev)}
-        ></ha-form>
-        <h3>Podgląd (demo)</h3>
-        ${demo}
-      </ha-card>
+        <div style="margin-top:12px;">
+          <mwc-button outlined @click="${() => this._resetDefaults()}">Przywróć domyślne</mwc-button>
+        </div>
+      </div>
     `;
+
+    // 🔧 ha-form musi być dostępny zanim podpinamy event
+    setTimeout(() => {
+      const haForm = this.shadowRoot.querySelector("ha-form");
+      if (haForm && this._config) {
+        haForm.addEventListener("value-changed", (ev) => this._valueChanged(ev));
+      }
+    }, 100);
   }
 
-  _onToggleAdvanced() {
-    this._showAdvanced = !this._showAdvanced;
-    this.render();
-  }
-
-  _onResetDefaults() {
-    this.setConfig({});
-    this.render();
-    this.dispatchEvent(new Event("config-changed", { bubbles: true, composed: true }));
+  _renderAdvanced() {
+    return `
+      <div class="section">
+        <h3>Kolory wyników</h3>
+        <ha-form
+          .hass="${this.hass}"
+          .schema="${[
+            { name: 'colors.win', label: 'Wygrana', selector: { color_rgb: {} } },
+            { name: 'colors.draw', label: 'Remis', selector: { color_rgb: {} } },
+            { name: 'colors.loss', label: 'Porażka', selector: { color_rgb: {} } },
+          ]}"
+          .data="${this._config}"
+        ></ha-form>
+      </div>
+    `;
   }
 
   _valueChanged(ev) {
     ev.stopPropagation();
-    const newConfig = ev.detail.value;
-    this._config = newConfig;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig } }));
+    const target = ev.detail.value || {};
+    this._config = { ...this._config, ...target };
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+  }
+
+  _toggleAdvanced() {
+    this._showAdvanced = !this._showAdvanced;
+    this._render();
+  }
+
+  _resetDefaults() {
+    this._config = {
+      fill: "gradient",
+      gradient: { alpha: 0.5, start: 30, end: 100 },
+      show_logos: true,
+      show_result_symbol: true,
+      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
+    };
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (this.shadowRoot) this._render();
+  }
+
+  get hass() {
+    return this._hass;
   }
 }
 
 customElements.define("matches-card-editor", MatchesCardEditor);
-console.info("[MatchesCardEditor] v0.3.008 loaded ✅");
+console.info("%c [MatchesCardEditor] v0.3.008b loaded", "color: #7ac943; font-weight: bold;");

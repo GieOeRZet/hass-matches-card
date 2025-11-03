@@ -1,12 +1,13 @@
 {
-  "domain": "matches_card",
+  "domain": "lovelace",
   "name": "Matches Card (90minut)",
   "documentation": "https://github.com/GieOeRZet/matches-card",
-  "version": "0.3.012",
+  "version": "0.3.2.002",
+  "after_dependencies": [],
   "requirements": [],
-  "dependencies": [],
   "codeowners": ["@GieOeRZet"],
-  "homeassistant": "2025.10.0",
-  "frontend": true,
-  "render_readme": true
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
+  "homeassistant": "2025.10.0"
 }

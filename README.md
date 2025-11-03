@@ -64,3 +64,5 @@ npm run build
 ```
 
 Wynik w `dist/matches-card.js`.
+
+<!-- minor edit to trigger build -->

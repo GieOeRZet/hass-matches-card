@@ -1,181 +1,276 @@
-/* Matches Card – v0.3.012
- * Obsługa nowego formatu fill.type (gradient / zebra / none)
- * Kompatybilne z edytorem GUI (0.3.011)
- * Autor: GieOeRZet
- */
+// SPDX-License-Identifier: MIT
+// Matches Card – 90minut
+// v0.3.2.002 (HA 2025.10+ compatible)
 
-class MatchesCard extends HTMLElement {
-  setConfig(config) {
-    if (!config.entity) throw new Error("Entity is required");
-    this.config = config;
-  }
+import { LitElement, html, css, nothing } from "lit";
 
-  set hass(hass) {
-    this._hass = hass;
-    const entity = this.config.entity;
-    const stateObj = hass.states[entity];
-    if (!stateObj) return;
-    const matches = stateObj.attributes.matches || [];
+const VERSION = "0.3.2.002";
+const CARD_TAG = "matches-card";
+const EDITOR_TAG = "matches-card-editor";
 
-    // ✅ obsługa nowego formatu fill: { type: "gradient", ... }
-    const fillType =
-      typeof this.config.fill === "string"
-        ? this.config.fill
-        : this.config.fill?.type || "none";
+console.info(
+  `%c[MatchesCard] v${VERSION} loaded`,
+  "color:#3ba55d;font-weight:bold;"
+);
 
-    const zebraConf = this.config.fill?.zebra || {};
-    const gradientConf = this.config.fill?.gradient || {};
-    const styleConf = this.config.style || {};
-    const colors = this.config.colors || {
-      win: "#3ba55d",
-      loss: "#e23b3b",
-      draw: "#468cd2",
+const DEFAULTS = {
+  entity: "",
+  fill_type: "gradient", // "none" | "gradient" | "zebra" | "solid"
+  solid_color: "rgba(0,0,0,0.0)",
+  gradient_angle: 135,
+  gradient_start: "rgba(0, 120, 255, 0.18)",
+  gradient_stop1: 30, // %
+  gradient_mid: "rgba(120, 0, 255, 0.10)",
+  gradient_stop2: 65, // %
+  gradient_end: "rgba(255, 0, 120, 0.18)",
+  zebra_size: 26, // px (pas)
+  zebra_gap: 26,  // px (przerwa)
+  zebra_color: "rgba(0,0,0,0.06)",
+  border_radius: 14,
+  card_padding: 14,
+  show_badge: true,
+  title: "",
+  font_family: "",   // np. "Inter, Roboto, sans-serif"
+  font_size: 1.0,    // mnożnik
+};
+
+class MatchesCard extends LitElement {
+  static get properties() {
+    return {
+      hass: {},
+      _config: {},
+      _updatePending: { state: true },
     };
-
-    const zebraCSS =
-      fillType === "zebra"
-        ? `tr:nth-child(even){
-             background: repeating-linear-gradient(${zebraConf.angle || 135}deg,
-               rgba(0,0,0,${zebraConf.stripe_opacity ?? 0.06}),
-               rgba(0,0,0,${zebraConf.stripe_opacity ?? 0.06}) ${zebraConf.stripe_width ?? 18}px,
-               transparent ${zebraConf.stripe_width ?? 18}px,
-               transparent ${(zebraConf.stripe_width ?? 18) + (zebraConf.stripe_gap ?? 18)}px);
-           }`
-        : "";
-
-    const separatorCSS = `tr{border-bottom:1px solid rgba(0,0,0,0.1);}`;
-
-    const gradientStart = gradientConf.start_color ?? "#1e3a8a";
-    const gradientEnd = gradientConf.end_color ?? "#9333ea";
-    const gradientAlpha = gradientConf.start_opacity ?? 0.4;
-    const gradientAngle = gradientConf.angle ?? 135;
-
-    const fillStyle =
-      fillType === "gradient"
-        ? `background:linear-gradient(${gradientAngle}deg, ${gradientStart}${Math.round(
-            gradientAlpha * 255
-          )
-            .toString(16)
-            .padStart(2, "0")}, ${gradientEnd}${Math.round(
-            gradientAlpha * 255
-          )
-            .toString(16)
-            .padStart(2, "0")});`
-        : "";
-
-    const style = `
-      <style>
-        ha-card {
-          padding:${styleConf.padding ?? 10}px;
-          border-radius:${styleConf.radius ?? 12}px;
-          font-family:"Inter","Segoe UI",Roboto,sans-serif;
-        }
-        table { width:100%; border-collapse:collapse; }
-        td { text-align:center; vertical-align:middle; padding:4px 6px; }
-        .team-cell{ text-align:left; padding-left:8px; }
-        .team-row{ display:flex; align-items:center; line-height:1.3em; }
-        .bold{font-weight:600;} .dim{opacity:0.8;}
-        .result-circle{
-          border-radius:50%;
-          width:26px; height:26px; color:white;
-          display:flex; align-items:center; justify-content:center;
-          font-weight:bold; margin:0 auto;
-        }
-        ${zebraCSS} ${separatorCSS}
-      </style>`;
-
-    const rows = matches
-      .map((m) => {
-        const date = m.date ? new Date(m.date.replace(" ", "T")) : null;
-        const dateStr = date
-          ? date.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" })
-          : "-";
-        const timeStr = m.finished
-          ? "KONIEC"
-          : date
-          ? date.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
-          : "";
-
-        const resultClass =
-          m.result === "win"
-            ? "row-win"
-            : m.result === "loss"
-            ? "row-loss"
-            : m.result === "draw"
-            ? "row-draw"
-            : "";
-
-        const homeBold =
-          m.result === "win" ? "bold" : m.result === "loss" ? "dim" : "";
-        const awayBold =
-          m.result === "loss" ? "bold" : m.result === "win" ? "dim" : "";
-
-        const [homeScore, awayScore] = (m.score || "-").split("-");
-
-        const leagueIcon =
-          m.league === "L"
-            ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/ekstraklasa.png"
-            : m.league === "PP"
-            ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/puchar.png"
-            : null;
-
-        return `
-          <tr class="${resultClass}" style="${fillStyle}">
-            <td><div>${dateStr}</div><div>${timeStr}</div></td>
-            <td>
-              ${leagueIcon
-                ? `<img src="${leagueIcon}" height="22" style="display:block;margin:auto;"/>`
-                : m.league || "-"}
-            </td>
-            <td>
-              <img src="${m.logo_home}" height="24" style="background:white;border-radius:4px;padding:2px;"/><br>
-              <img src="${m.logo_away}" height="24" style="background:white;border-radius:4px;padding:2px;"/>
-            </td>
-            <td class="team-cell">
-              <div class="team-row ${homeBold}">${m.home}</div>
-              <div class="team-row ${awayBold}">${m.away}</div>
-            </td>
-            <td><div class="${homeBold}">${homeScore}</div><div class="${awayBold}">${awayScore}</div></td>
-            <td>
-              ${
-                m.result
-                  ? `<div class="result-circle" style="background-color:${colors[m.result]}">
-                      ${m.result.charAt(0).toUpperCase()}
-                     </div>`
-                  : ""
-              }
-            </td>
-          </tr>`;
-      })
-      .join("");
-
-    const title =
-      this.config.show_name && this.config.name
-        ? `header="${this.config.name}"`
-        : "";
-
-    this.innerHTML = `${style}<ha-card ${title}><table>${rows}</table></ha-card>`;
   }
 
   static getConfigElement() {
-    try {
-      return document.createElement("matches-card-editor");
-    } catch (e) {
-      console.warn("[MatchesCard] editor not yet loaded:", e);
-      return null;
+    return (async () => {
+      if (!customElements.get(EDITOR_TAG)) {
+        await import("./matches-card-editor.js");
+      }
+      return document.createElement(EDITOR_TAG);
+    })();
+  }
+
+  static getStubConfig() {
+    return {
+      entity: "sensor.90minut_gornik_zabrze_matches",
+      title: "Najbliższe mecze",
+    };
+  }
+
+  // ====== Card metadata for the Lovelace card picker ======
+  static get cardType() {
+    return CARD_TAG;
+  }
+  static get cardName() {
+    return "Matches Card (90minut)";
+  }
+  static get description() {
+    return "Karta wyników/terminarza 90minut – z tłem gradient/zebra (RGBA).";
+  }
+
+  setConfig(config) {
+    this._config = { ...DEFAULTS, ...config };
+    if (!this._config.entity) {
+      // pozwalamy zapisać, ale pokażemy czytelny fallback w render()
     }
+    this._updatePending = false;
+  }
+
+  // ≈ debounced odświeżanie – frontend HA 2025.x potrafi spamować set hass()
+  set hass(hass) {
+    this._hass = hass;
+    if (this._updatePending) return;
+    this._updatePending = true;
+    requestAnimationFrame(() => {
+      this._updatePending = false;
+      this.requestUpdate();
+    });
+  }
+
+  getCardSize() {
+    return 3;
+  }
+
+  _computeBackgroundStyle(cfg) {
+    const radius = `${Number(cfg.border_radius) ?? DEFAULTS.border_radius}px`;
+    const pad = `${Number(cfg.card_padding) ?? DEFAULTS.card_padding}px`;
+
+    let background = "transparent";
+
+    switch (cfg.fill_type) {
+      case "solid":
+        background = cfg.solid_color || DEFAULTS.solid_color;
+        break;
+
+      case "zebra": {
+        const size = Math.max(2, Number(cfg.zebra_size) || DEFAULTS.zebra_size);
+        const gap = Math.max(2, Number(cfg.zebra_gap) || DEFAULTS.zebra_gap);
+        const col = cfg.zebra_color || DEFAULTS.zebra_color;
+        // delikatne, nowoczesne paski pod kątem
+        background = `repeating-linear-gradient(45deg, ${col}, ${col} ${size}px, transparent ${size}px, transparent ${size + gap}px)`;
+        break;
+      }
+
+      case "gradient":
+      default: {
+        const ang = Number(cfg.gradient_angle) || DEFAULTS.gradient_angle;
+        const start = cfg.gradient_start || DEFAULTS.gradient_start;
+        const mid = cfg.gradient_mid || DEFAULTS.gradient_mid;
+        const end = cfg.gradient_end || DEFAULTS.gradient_end;
+        const s1 = Math.min(100, Math.max(0, Number(cfg.gradient_stop1) ?? DEFAULTS.gradient_stop1));
+        const s2 = Math.min(100, Math.max(0, Number(cfg.gradient_stop2) ?? DEFAULTS.gradient_stop2));
+        background = `linear-gradient(${ang}deg, ${start} 0%, ${mid} ${s1}%, ${end} ${s2}%)`;
+        break;
+      }
+    }
+
+    const fontScale = Number(this._config.font_size) || 1.0;
+    const fontFamily = this._config.font_family?.trim();
+
+    return `
+      --matches-font-scale: ${fontScale};
+      border-radius:${radius};
+      padding:${pad};
+      background:${background};
+      color: var(--primary-text-color);
+      font-size: calc(var(--paper-font-body1_-_font-size, 14px) * var(--matches-font-scale));
+      ${fontFamily ? `font-family: ${fontFamily};` : ""}
+    `;
+  }
+
+  _state() {
+    if (!this._hass || !this._config?.entity) return null;
+    return this._hass.states[this._config.entity] ?? null;
+  }
+
+  render() {
+    const cfg = this._config || DEFAULTS;
+    const stateObj = this._state();
+
+    // Fallback gdy nie ma encji lub brak stanu
+    if (!cfg.entity || !stateObj) {
+      return html`
+        <ha-card style=${this._computeBackgroundStyle(cfg)}>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <ha-icon icon="mdi:alert-circle-outline" style="color:var(--error-color);"></ha-icon>
+            <div>
+              <div style="font-weight:600;">Brak danych</div>
+              <div style="opacity:.7">Nie znaleziono encji: <code>${cfg.entity || "—"}</code></div>
+            </div>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    // Przyjmijmy, że sensor zwraca JSON w atrybucie `matches` (lista) lub tekst.
+    const attrs = stateObj.attributes || {};
+    const matches = Array.isArray(attrs.matches) ? attrs.matches : [];
+
+    return html`
+      <ha-card style=${this._computeBackgroundStyle(cfg)}>
+        ${cfg.title
+          ? html`<div class="title">${cfg.title}</div>`
+          : nothing}
+
+        ${cfg.show_badge
+          ? html`<div class="badge">
+              <ha-icon icon="mdi:soccer"></ha-icon>
+              <span>${stateObj.state}</span>
+            </div>`
+          : nothing}
+
+        ${matches.length
+          ? html`
+              <div class="list">
+                ${matches.slice(0, 5).map((m) => this._renderItem(m))}
+              </div>
+            `
+          : html`<div class="empty">Brak nadchodzących meczów.</div>`}
+      </ha-card>
+    `;
+  }
+
+  _renderItem(m) {
+    // m: {date, home, away, league, venue, score, ...}
+    const d = m?.date ?? "";
+    const league = m?.league ?? "";
+    const home = m?.home ?? "—";
+    const away = m?.away ?? "—";
+    const score = m?.score ?? "";
+    const venue = m?.venue ?? "";
+
+    return html`
+      <div class="row">
+        <div class="left">
+          <div class="teams">
+            <span class="home">${home}</span>
+            <span class="vs">vs</span>
+            <span class="away">${away}</span>
+          </div>
+          <div class="meta">
+            ${d ? html`<span>${d}</span>` : nothing}
+            ${league ? html`<span>• ${league}</span>` : nothing}
+            ${venue ? html`<span>• ${venue}</span>` : nothing}
+          </div>
+        </div>
+        <div class="right">
+          ${score ? html`<span class="score">${score}</span>` : html`<span class="arrow">›</span>`}
+        </div>
+      </div>
+    `;
+  }
+
+  static get styles() {
+    return css`
+      :host { display: block; }
+      ha-card {
+        box-sizing: border-box;
+        background: var(--card-background-color, #1c1c1e);
+      }
+      .title {
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 8px;
+        letter-spacing: .2px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: var(--badge-background-color, rgba(125,125,125,0.15));
+        font-size: 0.875em;
+        margin-bottom: 10px;
+      }
+      .list { display: grid; gap: 10px; }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: color-mix(in oklab, var(--card-background-color) 82%, transparent);
+        backdrop-filter: saturate(120%) blur(2px);
+      }
+      .row:hover { transform: translateY(-1px); transition: transform .15s ease; }
+      .teams {
+        display: flex; flex-wrap: wrap; gap: 8px;
+        align-items: baseline; font-weight: 600;
+      }
+      .vs { opacity: .65; font-weight: 500; }
+      .meta {
+        opacity: .8; display: flex; flex-wrap: wrap; gap: 8px; font-size: .9em; margin-top: 4px;
+      }
+      .score { font-weight: 800; letter-spacing: .3px; }
+      .arrow { opacity: .5; font-size: 22px; line-height: 1; }
+    `;
   }
 }
 
-if (!customElements.get("matches-card")) {
-  customElements.define("matches-card", MatchesCard);
-  console.info("[MatchesCard] v0.3.012 loaded ✅");
+if (!customElements.get(CARD_TAG)) {
+  customElements.define(CARD_TAG, MatchesCard);
 }
-
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "matches-card",
-  name: "Matches Card (90minut)",
-  preview: true,
-  description: "Karta meczów 90minut.pl z edytorem GUI i gradientem",
-});

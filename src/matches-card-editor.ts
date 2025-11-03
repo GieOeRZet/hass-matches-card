@@ -1,63 +1,64 @@
-import { LitElement, html, css } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import {LitElement, html, css} from "lit";
 
-@customElement("matches-card-editor")
 export class MatchesCardEditor extends LitElement {
-  @property({ attribute: false }) hass;
-  @state() config;
+  static get properties() {
+    return {
+      hass: {attribute: false},
+      _config: {attribute: false}
+    };
+  }
 
-  setConfig(config) {
-    this.config = config;
+  hass: any;
+  private _config: any;
+
+  static styles = css`
+    .card-config { display:flex; flex-direction:column; gap:10px; }
+    ha-switch, ha-select, ha-textfield { width:100%; }
+  `;
+
+  setConfig(config: any) {
+    this._config = {...config};
   }
 
   render() {
-    if (!this.hass || !this.config) return html``;
+    if (!this.hass || !this._config) return html``;
     return html`
       <div class="card-config">
         <ha-entity-picker
           label="Sensor z meczami"
           .hass=${this.hass}
-          .value=${this.config.entity}
+          .value=${this._config.entity}
           @value-changed=${this._change("entity")}
         ></ha-entity-picker>
 
-        <ha-textfield
-          label="Nazwa"
-          .value=${this.config.name || ""}
-          @input=${this._change("name")}
-        ></ha-textfield>
+        <ha-textfield label="Nazwa" .value=${this._config.name || ""} @input=${this._change("name")}></ha-textfield>
 
-        <ha-switch
-          .checked=${this.config.show_logos}
-          @change=${this._change("show_logos")}
-          >Pokaż loga</ha-switch
+        <ha-select
+          label="Wypełnienie wierszy"
+          .value=${this._config.fill || "gradient"}
+          @selected=${this._change("fill")}
         >
+          <mwc-list-item value="gradient">Gradient</mwc-list-item>
+          <mwc-list-item value="zebra">Zebra</mwc-list-item>
+          <mwc-list-item value="none">Brak</mwc-list-item>
+        </ha-select>
+
+        <ha-switch .checked=${!!this._config.show_name} @change=${this._change("show_name")}>Pokaż nazwę</ha-switch>
+        <ha-switch .checked=${!!this._config.show_logos} @change=${this._change("show_logos")}>Pokaż loga</ha-switch>
+        <ha-switch .checked=${!!this._config.show_result_symbol} @change=${this._change("show_result_symbol")}>Pokaż symbol wyniku</ha-switch>
       </div>
     `;
   }
 
-  _change(field) {
-    return (ev) => {
-      const value =
-        ev.target.checked !== undefined
-          ? ev.target.checked
-          : ev.detail?.value ?? ev.target.value;
-      this.config = { ...this.config, [field]: value };
-      this.dispatchEvent(
-        new CustomEvent("config-changed", { detail: { config: this.config } })
-      );
+  private _change(field: string) {
+    return (ev: any) => {
+      const val = (ev && ev.target && "checked" in ev.target) ? ev.target.checked : (ev?.detail?.value ?? ev?.target?.value);
+      this._config = {...this._config, [field]: val};
+      const event = new Event("config-changed", {bubbles: true, composed: true});
+      (event as any).detail = {config: this._config};
+      this.dispatchEvent(event);
     };
   }
-
-  static styles = css`
-    .card-config {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    ha-switch,
-    ha-textfield {
-      width: 100%;
-    }
-  `;
 }
+
+customElements.define("matches-card-editor", MatchesCardEditor);

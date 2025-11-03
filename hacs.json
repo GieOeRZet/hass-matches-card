@@ -8,17 +8,5 @@
   "homeassistant": "2025.10.0",
   "persistent_directory": "www/community/matches-card",
   "zip_release": false,
-  "version": "0.3.012",
-  "resources": [
-    {
-      "file": "matches-card.js",
-      "type": "module",
-      "url": "/hacsfiles/matches-card/matches-card.js"
-    },
-    {
-      "file": "matches-card-editor.js",
-      "type": "module",
-      "url": "/hacsfiles/matches-card/matches-card-editor.js"
-    }
-  ]
+  "version": "0.3.2.002"
 }

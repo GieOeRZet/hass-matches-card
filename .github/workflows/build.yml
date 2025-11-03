@@ -1,9 +1,8 @@
-name: Build MatchesCard
+name: Build and Commit MatchesCard
 
 on:
   push:
     branches: [ main ]
-  pull_request:
 
 jobs:
   build:
@@ -21,17 +20,18 @@ jobs:
           node-version: 20
 
       # 3️⃣ Instalacja zależności
-      # (używamy "npm install", bo repo nie zawiera package-lock.json)
       - name: Install dependencies
         run: npm install
 
       # 4️⃣ Budowanie karty
-      - name: Build Matches Card
+      - name: Build MatchesCard
         run: npm run build
 
-      # 5️⃣ Archiwizacja wyniku builda
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: matches-card-dist
-          path: dist/
+      # 5️⃣ Commit gotowego builda do repo
+      - name: Commit build result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dist/
+          git commit -m "🤖 Automated build: update dist" || echo "No changes to commit"
+          git push

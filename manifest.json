@@ -1,13 +1,6 @@
 {
-  "domain": "matches_card",
-  "name": "Matches Card",
-  "version": "0.3.022",
-  "documentation": "https://github.com/GieOeRZet/matches-card",
-  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "resources": [
-    {
-      "type": "module",
-      "url": "/hacsfiles/matches-card/matches-card.js"
-    }
-  ]
+  "name": "MatchesCard",
+  "render_readme": true,
+  "filename": "matches-card.js",
+  "hide_default_branch": false
 }

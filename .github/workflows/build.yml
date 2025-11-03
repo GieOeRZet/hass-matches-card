@@ -11,47 +11,63 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build
+      - name: Build the card
         run: npm run build
 
-      - name: Commit dist
+      - name: Commit dist folder
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f dist
-          git commit -m "🤖 build: update dist" || echo "No changes"
+          git commit -m "🤖 Automated build: update dist" || echo "No changes to commit"
           git push
 
+      # 🔥 Poprawiony krok obliczania wersji
       - name: Compute next tag
         id: tagger
         run: |
-          LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.3.100)
-          BASE=${LAST#v}
-          NEXT=$(echo "$BASE" | awk -F. '{ $NF+=1; OFS="."; print $0 }')
-          echo "tag=v$NEXT" >> $GITHUB_OUTPUT
+          # Pobierz ostatni tag (lub startuj od v0.3.100 jeśli brak)
+          LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.3.100")
+          echo "Last tag: $LAST"
 
-      - name: Create tag
+          # Usuń literę v i rozbij numerację na 3 części
+          BASE=${LAST#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<<"$BASE"
+
+          # Jeśli PATCH nie jest liczbą, ustaw na 0
+          PATCH=${PATCH:-0}
+          PATCH=$((PATCH + 1))
+
+          NEXT="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "Next tag: $NEXT"
+
+          echo "tag=$NEXT" >> $GITHUB_OUTPUT
+
+      - name: Create Git tag
         run: |
           git tag ${{ steps.tagger.outputs.tag }}
           git push origin ${{ steps.tagger.outputs.tag }}
 
-      - name: Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tagger.outputs.tag }}
           name: Release ${{ steps.tagger.outputs.tag }}
           body: |
-            Automated build & release
+            🚀 Automated build & release for matches-card  
             Commit: ${{ github.sha }}
           files: |
             dist/matches-card.js

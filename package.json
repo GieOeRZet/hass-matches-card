@@ -10,8 +10,9 @@
     "@rollup/plugin-commonjs": "^25.0.0",
     "@rollup/plugin-node-resolve": "^15.2.0",
     "@rollup/plugin-typescript": "^11.1.0",
-    "rollup": "^3.29.0",
     "@rollup/plugin-terser": "^0.4.4",
-    "typescript": "^5.7.2"
+    "rollup": "^3.29.5",
+    "typescript": "^5.7.2",
+    "tslib": "^2.7.0"
   }
 }

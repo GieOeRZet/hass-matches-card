@@ -1,36 +1,18 @@
 import typescript from "@rollup/plugin-typescript";
-import nodeResolve from "@rollup/plugin-node-resolve";
+import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
-import babel from "@rollup/plugin-babel";
-import terser from "@rollup/plugin-terser";
-import serve from "rollup-plugin-serve";
-
-const dev = process.env.ROLLUP_WATCH;
+import { terser } from "rollup-plugin-terser";
 
 export default {
   input: "src/matches-card.ts",
   output: {
-    dir: "dist",
+    file: "dist/matches-card.js",
     format: "es",
-    inlineDynamicImports: true
   },
   plugins: [
-    typescript(),
-    nodeResolve(),
+    resolve(),
     commonjs(),
-    babel({
-      presets: [["@babel/preset-env", { useBuiltIns: "entry", corejs: "3.22" }]],
-      babelHelpers: "bundled"
-    }),
-    ...(dev
-      ? [
-          serve({
-            contentBase: ["./dist"],
-            host: "0.0.0.0",
-            port: 5200,
-            headers: { "Access-Control-Allow-Origin": "*" }
-          })
-        ]
-      : [terser()])
-  ]
+    typescript({ tsconfig: "./tsconfig.json" }),
+    terser(),
+  ],
 };

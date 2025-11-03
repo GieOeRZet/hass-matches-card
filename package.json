@@ -1,38 +1,17 @@
 {
   "name": "matches-card",
-  "version": "0.3.010",
-  "description": "Matches Card – karta meczów 90minut.pl z gradientem RGBA i GUI-edytorem",
-  "keywords": [
-    "home-assistant",
-    "lovelace",
-    "custom-card",
-    "matches",
-    "90minut"
-  ],
-  "main": "dist/matches-card.js",
+  "version": "0.3.022",
+  "description": "Home Assistant custom card showing football matches",
   "scripts": {
-    "build": "rollup -c",
-    "start": "rollup -c --watch"
-  },
-  "author": "Roman (GieOeRZet)",
-  "license": "MIT",
-  "dependencies": {
-    "lit": "^3.2.0",
-    "superstruct": "^2.0.2"
+    "build": "rollup -c"
   },
   "devDependencies": {
-    "@babel/core": "^7.26.0",
-    "@babel/preset-env": "^7.26.0",
-    "@rollup/plugin-babel": "^6.0.4",
-    "@rollup/plugin-commonjs": "^28.0.1",
-    "@rollup/plugin-node-resolve": "^15.3.0",
-    "@rollup/plugin-typescript": "^12.1.1",
-    "@rollup/plugin-terser": "^0.4.4",
-    "rollup": "^4.27.4",
-    "rollup-plugin-serve": "^1.1.1",
-    "typescript": "^5.7.2",
-    "tslib": "^2.7.0"
-
-  },
-  "browserslist": "> 0.25%, not dead"
+    "lit": "^3.1.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.2.0",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "rollup": "^3.29.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "typescript": "^5.7.2"
+  }
 }

@@ -1,0 +1,32 @@
+{
+  "name": "matches-card",
+  "version": "0.3.100",
+  "description": "Home Assistant custom card showing football matches (layout 1:1 z Twojej wersji).",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "football",
+    "matches"
+  ],
+  "author": "Roman (GieOeRZet)",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-replace": "^5.0.7",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "eslint": "^9.13.0",
+    "lit": "^3.2.0",
+    "rollup": "^4.24.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {}
+}

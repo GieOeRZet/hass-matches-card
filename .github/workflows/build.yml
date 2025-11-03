@@ -1,43 +1,23 @@
-name: Build and Commit MatchesCard
+name: Build and Release
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - "v*.*.*"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
-
-
     steps:
-      # 1️⃣ Pobranie repozytorium
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 2️⃣ Konfiguracja Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      # 3️⃣ Instalacja zależności
-      - name: Install dependencies
-        run: npm install
-
-      # 4️⃣ Budowanie karty
-      - name: Build MatchesCard
-        run: npm run build
-
-      # 5️⃣ Commit gotowego builda do repo
-      - name: Commit build result
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config advice.addIgnoredFile false
-          git add -f dist/
-          git commit -m "🤖 Automated build: update dist" || echo "No changes to commit"
-          git push
-
+      - run: npm ci
+      - run: npm run build
+      - name: Upload dist
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/matches-card.js

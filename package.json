@@ -1,0 +1,36 @@
+{
+  "name": "matches-card",
+  "version": "0.3.010",
+  "description": "Matches Card – karta meczów 90minut.pl z gradientem RGBA i GUI-edytorem",
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "matches",
+    "90minut"
+  ],
+  "main": "dist/matches-card.js",
+  "scripts": {
+    "build": "rollup -c",
+    "start": "rollup -c --watch"
+  },
+  "author": "Roman (GieOeRZet)",
+  "license": "MIT",
+  "dependencies": {
+    "lit": "^3.2.0",
+    "superstruct": "^2.0.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-typescript": "^12.1.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.27.4",
+    "rollup-plugin-serve": "^1.1.1",
+    "typescript": "^5.7.2"
+  },
+  "browserslist": "> 0.25%, not dead"
+}

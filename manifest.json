@@ -1,0 +1,14 @@
+
+{
+  "domain": "matches-card",
+  "name": "Matches Card",
+  "documentation": "https://github.com/GieOeRZet/matches-card",
+  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
+  "version": "0.3.010",
+  "codeowners": ["@GieOeRZet"],
+  "requirements": [],
+  "iot_class": "local_push",
+  "render_readme": true,
+  "filename": "matches-card.js",
+  "homeassistant": "2024.8.0"
+}

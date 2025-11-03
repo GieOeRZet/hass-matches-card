@@ -1,8 +1,7 @@
 import typescript from "@rollup/plugin-typescript";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
-import { terser } from "@rollup/plugin-terser";
-
+import terser from "@rollup/plugin-terser";
 
 export default {
   input: "src/matches-card.ts",
@@ -13,7 +12,9 @@ export default {
   plugins: [
     resolve(),
     commonjs(),
-    typescript({ tsconfig: "./tsconfig.json" }),
+    typescript({
+      tsconfig: "./tsconfig.json",
+    }),
     terser(),
   ],
 };

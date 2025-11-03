@@ -2,22 +2,58 @@ name: Build and Release
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run build
-      - name: Upload dist
+          node-version: "20"
+
+      - name: Install deps
+        run: npm install --legacy-peer-deps
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit dist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f dist
+          git commit -m "🤖 build: update dist" || echo "No changes"
+          git push
+
+      - name: Compute next tag
+        id: tagger
+        run: |
+          LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.3.100)
+          BASE=${LAST#v}
+          NEXT=$(echo "$BASE" | awk -F. '{ $NF+=1; OFS="."; print $0 }')
+          echo "tag=v$NEXT" >> $GITHUB_OUTPUT
+
+      - name: Create tag
+        run: |
+          git tag ${{ steps.tagger.outputs.tag }}
+          git push origin ${{ steps.tagger.outputs.tag }}
+
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/matches-card.js
+          tag_name: ${{ steps.tagger.outputs.tag }}
+          name: Release ${{ steps.tagger.outputs.tag }}
+          body: |
+            Automated build & release
+            Commit: ${{ github.sha }}
+          files: |
+            dist/matches-card.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

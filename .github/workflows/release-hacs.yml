@@ -1,0 +1,86 @@
+name: Create and Publish HACS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag wersji (np. v0.9.3-beta)"
+        required: true
+      release_title:
+        description: "Tytuł release (np. Matches Card v0.9.3-beta)"
+        required: true
+      overwrite:
+        description: "Nadpisać istniejący release?"
+        required: false
+        default: "true"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔄 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🧩 Update version in manifest.json and hacs.json
+        run: |
+          TAG=${{ github.event.inputs.tag_name }}
+          VERSION=${TAG#v}
+
+          echo "Updating manifest.json and hacs.json version → $VERSION"
+
+          # manifest.json
+          if [ -f "manifest.json" ]; then
+            jq --arg ver "$VERSION" '.version = $ver' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+          fi
+
+          # hacs.json (dodaj pole version jeśli brak)
+          if [ -f "hacs.json" ]; then
+            if jq -e '.version' hacs.json >/dev/null; then
+              jq --arg ver "$VERSION" '.version = $ver' hacs.json > hacs.tmp && mv hacs.tmp hacs.json
+            else
+              jq --arg ver "$VERSION" '. + {version: $ver}' hacs.json > hacs.tmp && mv hacs.tmp hacs.json
+            fi
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "🔖 Bump version to $VERSION"
+          git push
+
+      - name: 🧰 Install zip utility
+        run: sudo apt-get install zip jq -y
+
+      - name: 📦 Create ZIP package
+        run: |
+          ZIP_NAME="matches-card_${{ github.event.inputs.tag_name }}.zip"
+          echo "Creating $ZIP_NAME..."
+          zip -r "$ZIP_NAME" . -x "*.git*" -x "*.github*" -x "*__pycache__*"
+          ls -lh "$ZIP_NAME"
+
+      - name: ❌ Delete existing release (if overwrite is true)
+        if: ${{ github.event.inputs.overwrite == 'true' }}
+        uses: dev-drprasad/delete-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.tag_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name }}
+          name: ${{ github.event.inputs.release_title }}
+          files: matches-card_${{ github.event.inputs.tag_name }}.zip
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ✅ Done
+        run: echo "✅ Release ${{ github.event.inputs.tag_name }} created successfully!"

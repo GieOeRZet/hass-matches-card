@@ -27,19 +27,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 🧰 Install tools
+        run: sudo apt-get update && sudo apt-get install -y zip jq
+
       - name: 🧩 Update version in manifest.json and hacs.json
         run: |
           TAG=${{ github.event.inputs.tag_name }}
           VERSION=${TAG#v}
+          echo "Updating version → $VERSION"
 
-          echo "Updating manifest.json and hacs.json version → $VERSION"
-
-          # manifest.json
+          # Update manifest.json
           if [ -f "manifest.json" ]; then
             jq --arg ver "$VERSION" '.version = $ver' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
           fi
 
-          # hacs.json (dodaj pole version jeśli brak)
+          # Update hacs.json
           if [ -f "hacs.json" ]; then
             if jq -e '.version' hacs.json >/dev/null; then
               jq --arg ver "$VERSION" '.version = $ver' hacs.json > hacs.tmp && mv hacs.tmp hacs.json
@@ -50,11 +52,9 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "🔖 Bump version to $VERSION"
-          git push
-
-      - name: 🧰 Install zip utility
-        run: sudo apt-get install zip jq -y
+          git add manifest.json hacs.json
+          git commit -m "🔖 Bump version to $VERSION" || echo "No version changes"
+          git push || echo "No push"
 
       - name: 📦 Create ZIP package
         run: |
@@ -65,9 +65,9 @@ jobs:
 
       - name: ❌ Delete existing release (if overwrite is true)
         if: ${{ github.event.inputs.overwrite == 'true' }}
-        uses: dev-drprasad/delete-release@v1
-        with:
-          tag_name: ${{ github.event.inputs.tag_name }}
+        run: |
+          echo "Deleting existing release if it exists..."
+          gh release delete "${{ github.event.inputs.tag_name }}" -y || echo "No existing release to delete"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

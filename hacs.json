@@ -1,1 +1,13 @@
-{"name": "Matches Card (90minut)", "type": "plugin"}
+{
+  "name": "Matches Card (90minut)",
+  "filename": "matches-card.js",
+  "type": "plugin",
+  "render_readme": true,
+  "hide_default_branch": false,
+  "resources": [
+    "translations/pl.json",
+    "translations/en.json",
+    "logo/",
+    
+  ]
+}

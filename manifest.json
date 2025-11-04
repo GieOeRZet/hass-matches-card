@@ -5,9 +5,7 @@
   "version": "0.9.40",
   "render_readme": true,
   "homeassistant": "2024.8.0",
-  "codeowners": [
-    "@GieOeRZet"
-  ],
   "documentation": "https://github.com/GieOeRZet/matches-card",
-  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues"
+  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
+  "codeowners": ["@GieOeRZet"]
 }

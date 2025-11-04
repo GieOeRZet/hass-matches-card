@@ -1,1 +1,11 @@
-{"name": "Matches Card (90minut)", "version": "0.9.0-beta"}
+{
+  "type": "module",
+  "filename": "matches-card.js",
+  "name": "Matches Card (90minut)",
+  "version": "0.9.0-beta2",
+  "render_readme": true,
+  "homeassistant": "2024.8.0",
+  "codeowners": ["@GieOeRZet"],
+  "documentation": "https://github.com/GieOeRZet/matches-card",
+  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues"
+}

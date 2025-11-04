@@ -3,11 +3,15 @@
   "filename": "matches-card.js",
   "type": "plugin",
   "render_readme": true,
-  "hide_default_branch": false,
-  "resources": [
-    "translations/pl.json",
-    "translations/en.json",
-    "logo/",
-    
+  "version": "0.9.40",
+  "file_patterns": [
+    "matches-card.js",
+    "matches-card-editor.js",
+    "manifest.json",
+    "translations/*.json",
+    "logo/*.png",
+    "assets/*",
+    "icons/*",
+    "themes/*"
   ]
 }

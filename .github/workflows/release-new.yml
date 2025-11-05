@@ -1,82 +1,78 @@
-name: Build & Release Matches Card with version
+name: Build & Release Matches Card bez v
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Podaj numer wersji (np. v0.3.006)"
+        description: "Tag wersji (np. v0.3.007)"
         required: true
-
-permissions:
-  contents: write
+        default: "v0.3.007"
 
 jobs:
-  build-release:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set version variable
-        id: setver
+      - name: Set version
+        id: version
         run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
-      - name: Display version
-        run: echo "Building Matches Card ${{ env.VERSION }}"
-
-      # 🧩 Aktualizacja wersji w plikach manifest.json i hacs.json
-      - name: Update version numbers
+      - name: Prepare clean version (remove 'v' prefix)
         run: |
-          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/g" manifest.json
-          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/g" hacs.json
+          CLEAN_VERSION=${VERSION#v}
+          echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
+          echo "Używana wersja: $CLEAN_VERSION"
 
-      # 💾 Commit zmian do repo
-      - name: Commit updated version files
+      - name: Update version numbers in manifest.json & hacs.json
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add manifest.json hacs.json
-          git commit -m "Bump version to ${VERSION}" || echo "No changes to commit"
-          git push
+          sed -i "s/\"version\": \".*\"/\"version\": \"${CLEAN_VERSION}\"/g" manifest.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"${CLEAN_VERSION}\"/g" hacs.json
 
-      # 📦 Utworzenie paczki ZIP bez folderu nadrzędnego
-      - name: Create package ZIP
+      - name: Verify file structure
         run: |
-          mkdir -p package/translations
-          mkdir -p package/logo
-          cp matches-card.js matches-card-editor.js manifest.json hacs.json package/
-          cp -r translations/* package/translations/ || true
-          cp -r logo/* package/logo/ || true
-          cd package
-          zip -r ../matches-card-${VERSION}.zip .
-          cd ..
+          echo "Struktura repozytorium przed pakowaniem:"
+          ls -R .
 
-      # 🧹 Usunięcie poprzedniego release o tym samym tagu
-      - name: Delete previous release (if exists)
-        uses: dev-drprasad/delete-tag-and-release@v1.0
+      - name: Create ZIP package
+        run: |
+          mkdir -p dist
+          zip -r "dist/matches-card-${CLEAN_VERSION}.zip" \
+            matches-card.js \
+            matches-card-editor.js \
+            manifest.json \
+            hacs.json \
+            translations/ \
+            logo/
+          echo "Utworzono paczkę: dist/matches-card-${CLEAN_VERSION}.zip"
+
+      - name: Upload ZIP as artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ env.VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: matches-card-${{ env.CLEAN_VERSION }}.zip
+          path: dist/matches-card-${{ env.CLEAN_VERSION }}.zip
 
-      # 🚀 Utworzenie nowego release (nie jako pre-release)
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: "Matches Card ${{ env.VERSION }}"
           tag_name: ${{ env.VERSION }}
-          draft: false
-          prerelease: false
-          files: matches-card-${{ env.VERSION }}.zip
+          name: "Matches Card ${{ env.CLEAN_VERSION }}"
           body: |
-            ## Matches Card ${{ env.VERSION }}
             Automatycznie zbudowana wersja karty gotowa do instalacji przez HACS.
 
-            **Zmiany:**
-            - automatyczne uaktualnianie wersji w manifest.json i hacs.json
+            🔄 Zmiany:
+            - automatyczna aktualizacja wersji w manifest.json i hacs.json
             - poprawna struktura ZIP (działa w HACS)
             - pakuje logo/ i translations/
             - automatyczny commit wersji
             - automatyczny release przez GitHub Actions
+          draft: false
+          prerelease: false
+          files: ./dist/matches-card-${{ env.CLEAN_VERSION }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Confirm release published
+        run: |
+          echo "✅ Release opublikowany jako Matches Card $CLEAN_VERSION"

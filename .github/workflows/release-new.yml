@@ -1,12 +1,12 @@
-name: Build & Release Matches Card bez v
+name: Release Matches Card nowy build
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Tag wersji (np. v0.3.007)"
+        description: "Tag wersji (np. v0.3.009)"
         required: true
-        default: "v0.3.007"
+        default: "v0.3.009"
 
 jobs:
   build:
@@ -23,16 +23,31 @@ jobs:
         run: |
           CLEAN_VERSION=${VERSION#v}
           echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
-          echo "Używana wersja: $CLEAN_VERSION"
+          echo "📦 Clean version: $CLEAN_VERSION"
 
       - name: Update version numbers in manifest.json & hacs.json
         run: |
           sed -i "s/\"version\": \".*\"/\"version\": \"${CLEAN_VERSION}\"/g" manifest.json
           sed -i "s/\"version\": \".*\"/\"version\": \"${CLEAN_VERSION}\"/g" hacs.json
 
-      - name: Verify file structure
+      - name: Commit updated manifest & hacs
         run: |
-          echo "Struktura repozytorium przed pakowaniem:"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json hacs.json
+          git commit -m "🤖 Update version to ${CLEAN_VERSION}" || echo "Brak zmian do commita"
+          git push origin HEAD || echo "Pominięto push (branch protected?)"
+
+      - name: Create or update tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -fa "${VERSION}" -m "Automated release ${VERSION}"
+          git push origin "${VERSION}" --force
+
+      - name: Verify structure
+        run: |
+          echo "📁 Zawartość repozytorium:"
           ls -R .
 
       - name: Create ZIP package
@@ -45,7 +60,7 @@ jobs:
             hacs.json \
             translations/ \
             logo/
-          echo "Utworzono paczkę: dist/matches-card-${CLEAN_VERSION}.zip"
+          echo "✅ Utworzono ZIP: matches-card-${CLEAN_VERSION}.zip"
 
       - name: Upload ZIP as artifact
         uses: actions/upload-artifact@v4
@@ -73,6 +88,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Confirm release published
-        run: |
-          echo "✅ Release opublikowany jako Matches Card $CLEAN_VERSION"
+      - name: Potwierdzenie
+        run: echo "✅ Release Matches Card ${CLEAN_VERSION} opublikowany pomyślnie."

@@ -4,15 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: "Tag wersji (np. v0.9.3-beta)"
+        description: "Tag wersji (np. v0.9.41)"
         required: true
       release_title:
-        description: "Tytuł release (np. Matches Card v0.9.3-beta)"
+        description: "Tytuł release (np. Matches Card v0.9.41)"
         required: true
       overwrite:
         description: "Nadpisać istniejący release?"
         required: false
         default: "true"
+      prerelease:
+        description: "Czy oznaczyć jako pre-release? (true/false)"
+        required: false
+        default: "false"
 
 permissions:
   contents: write
@@ -27,21 +31,23 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🧰 Install tools
-        run: sudo apt-get update && sudo apt-get install -y zip jq
+      - name: 🧰 Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip jq
 
       - name: 🧩 Update version in manifest.json and hacs.json
         run: |
           TAG=${{ github.event.inputs.tag_name }}
           VERSION=${TAG#v}
-          echo "Updating version → $VERSION"
+          echo "🔢 Aktualizacja wersji → $VERSION"
 
-          # Update manifest.json
+          # manifest.json
           if [ -f "manifest.json" ]; then
             jq --arg ver "$VERSION" '.version = $ver' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
           fi
 
-          # Update hacs.json
+          # hacs.json
           if [ -f "hacs.json" ]; then
             if jq -e '.version' hacs.json >/dev/null; then
               jq --arg ver "$VERSION" '.version = $ver' hacs.json > hacs.tmp && mv hacs.tmp hacs.json
@@ -53,21 +59,21 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add manifest.json hacs.json
-          git commit -m "🔖 Bump version to $VERSION" || echo "No version changes"
-          git push || echo "No push"
+          git commit -m "🔖 Bump version to $VERSION" || echo "Brak zmian do commitowania"
+          git push || echo "Brak zmian do pushowania"
 
       - name: 📦 Create ZIP package
         run: |
           ZIP_NAME="matches-card_${{ github.event.inputs.tag_name }}.zip"
-          echo "Creating $ZIP_NAME..."
+          echo "📦 Tworzenie paczki: $ZIP_NAME"
           zip -r "$ZIP_NAME" . -x "*.git*" -x "*.github*" -x "*__pycache__*"
           ls -lh "$ZIP_NAME"
 
       - name: ❌ Delete existing release (if overwrite is true)
         if: ${{ github.event.inputs.overwrite == 'true' }}
         run: |
-          echo "Deleting existing release if it exists..."
-          gh release delete "${{ github.event.inputs.tag_name }}" -y || echo "No existing release to delete"
+          echo "🗑️ Usuwanie istniejącego release, jeśli istnieje..."
+          gh release delete "${{ github.event.inputs.tag_name }}" -y || echo "Brak istniejącego release do usunięcia"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -78,9 +84,9 @@ jobs:
           name: ${{ github.event.inputs.release_title }}
           files: matches-card_${{ github.event.inputs.tag_name }}.zip
           draft: false
-          prerelease: true
+          prerelease: ${{ github.event.inputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: ✅ Done
-        run: echo "✅ Release ${{ github.event.inputs.tag_name }} created successfully!"
+        run: echo "✅ Release ${{ github.event.inputs.tag_name }} został utworzony pomyślnie!"

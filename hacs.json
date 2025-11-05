@@ -5,7 +5,7 @@
   "render_readme": true,
   "content_in_root": true,
   "homeassistant": "2024.8.0",
-  "version": "0.3.001",
+  "version": "v0.3.006",
   "file_patterns": [
     "matches-card.js",
     "matches-card-editor.js",
@@ -13,8 +13,6 @@
     "translations/*.json",
     "logo/*.*"
   ],
-  "render_readme": true,
-  "persistent_directory": false,
   "documentation": "https://github.com/GieOeRZet/matches-card",
   "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
   "codeowners": ["@GieOeRZet"]

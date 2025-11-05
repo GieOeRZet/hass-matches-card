@@ -3,12 +3,10 @@
   "name": "Matches Card (90minut)",
   "filename": "matches-card.js",
   "render_readme": true,
-  "version": "0.9.41",
+  "version": "0.9.42",
   "homeassistant": "2024.8.0",
   "documentation": "https://github.com/GieOeRZet/matches-card",
   "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "codeowners": [
-    "@GieOeRZet"
-  ],
+  "codeowners": ["@GieOeRZet"],
   "content_in_root": true
 }

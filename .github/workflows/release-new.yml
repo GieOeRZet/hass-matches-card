@@ -1,0 +1,67 @@
+name: Build & Release Matches Card
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Podaj numer wersji (np. v0.3.002)"
+        required: true
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build ZIP and Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set version variable
+        id: vars
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+          fi
+
+      - name: Create ZIP package
+        run: |
+          mkdir -p package/translations
+          mkdir -p package/logo
+          cp matches-card.js matches-card-editor.js manifest.json hacs.json package/
+          cp -r translations/* package/translations/ || true
+          cp -r logo/* package/logo/ || true
+          cd package
+          zip -r ../matches-card-${VERSION}.zip .
+          cd ..
+
+      - name: Delete previous release (if exists)
+        uses: dev-drprasad/delete-tag-and-release@v1.0
+        with:
+          tag_name: ${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "Matches Card ${VERSION}"
+          tag_name: ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+          files: matches-card-${{ env.VERSION }}.zip
+          body: |
+            ## Matches Card ${VERSION}
+            Nowa wersja automatycznie zbudowana i gotowa do instalacji przez HACS.
+            **Zmiany:**
+            - poprawione ścieżki i struktura ZIP dla HACS
+            - automatyczny build przez GitHub Actions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

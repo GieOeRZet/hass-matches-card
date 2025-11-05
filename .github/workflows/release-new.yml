@@ -1,4 +1,4 @@
-name: Release Matches Card
+name: Build & Release Matches Card with version
 
 on:
   workflow_dispatch:
@@ -22,15 +22,24 @@ jobs:
         run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
       - name: Display version
-        run: echo "Building release version ${{ env.VERSION }}"
+        run: echo "Building Matches Card ${{ env.VERSION }}"
 
-      # Aktualizacja numeru wersji w manifest.json i hacs.json
+      # 🧩 Aktualizacja wersji w plikach manifest.json i hacs.json
       - name: Update version numbers
         run: |
           sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/g" manifest.json
           sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/g" hacs.json
 
-      # Utworzenie paczki ZIP bez folderu nadrzędnego
+      # 💾 Commit zmian do repo
+      - name: Commit updated version files
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add manifest.json hacs.json
+          git commit -m "Bump version to ${VERSION}" || echo "No changes to commit"
+          git push
+
+      # 📦 Utworzenie paczki ZIP bez folderu nadrzędnego
       - name: Create package ZIP
         run: |
           mkdir -p package/translations
@@ -42,7 +51,7 @@ jobs:
           zip -r ../matches-card-${VERSION}.zip .
           cd ..
 
-      # Usunięcie poprzedniego release o tym samym tagu
+      # 🧹 Usunięcie poprzedniego release o tym samym tagu
       - name: Delete previous release (if exists)
         uses: dev-drprasad/delete-tag-and-release@v1.0
         with:
@@ -50,7 +59,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Utworzenie nowego release
+      # 🚀 Utworzenie nowego release (nie jako pre-release)
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -64,8 +73,10 @@ jobs:
             Automatycznie zbudowana wersja karty gotowa do instalacji przez HACS.
 
             **Zmiany:**
-            - aktualizacja wersji w manifest.json i hacs.json
+            - automatyczne uaktualnianie wersji w manifest.json i hacs.json
             - poprawna struktura ZIP (działa w HACS)
-            - automatyczny build przez GitHub Actions
+            - pakuje logo/ i translations/
+            - automatyczny commit wersji
+            - automatyczny release przez GitHub Actions
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -4,10 +4,10 @@
 //  Repo:  https://github.com/GieOeRZet/matches-card
 //
 //  Zmiany vs 0.3.000:
-//  - Obsługa theme_mode: auto | light | dark
-//  - Pełny getStubConfig() z domyślnymi wartościami
+//  - Obsługa theme_mode: auto | light | dark (lekka, bez zmiany layoutu)
+//  - Pełny getStubConfig() z domyślnymi wartościami (edytor od razu ma komplet pól)
 //  - Wpis wersji w window.customCards
-//  - Gradient RGBA, layout 1:1 z 0.2.011
+//  - (wciąż) gradient w RGBA, layout 1:1 z 0.2.011
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
@@ -22,13 +22,16 @@ class MatchesCard extends HTMLElement {
       show_logos: true,
       full_team_names: true,
       show_result_symbols: true,
-      fill_mode: "gradient",
-      theme_mode: "auto",
+      fill_mode: "gradient", // gradient | zebra | none
+      theme_mode: "auto",    // auto | light | dark
 
       font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
       icon_size: { league: 26, crest: 24, result: 26 },
+
       gradient: { alpha: 0.5, start: 35, end: 100 },
+
       columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
+
       colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
 
       ...config,
@@ -40,8 +43,10 @@ class MatchesCard extends HTMLElement {
     const entity = this.config.entity;
     const stateObj = hass.states[entity];
     if (!stateObj) return;
+
     const matches = stateObj.attributes.matches || [];
 
+    // --- Theme mode (lekko wpływa na kontrasty separatorów/zebry) ---
     const darkMode =
       this.config.theme_mode === "dark" ||
       (this.config.theme_mode === "auto" &&
@@ -51,6 +56,9 @@ class MatchesCard extends HTMLElement {
     const rowSep = darkMode ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.1)";
     const zebraBg = darkMode ? "rgba(255,255,255,0.06)" : "rgba(240,240,240,0.4)";
 
+    // -------------------------
+    // STYLE
+    // -------------------------
     const zebraCSS =
       this.config.fill_mode === "zebra"
         ? `tr:nth-child(even){background-color:${zebraBg};}`
@@ -68,15 +76,32 @@ class MatchesCard extends HTMLElement {
           vertical-align: middle;
           padding: 4px 6px;
         }
-        tr { border-bottom: 1px solid ${rowSep}; }
+        tr {
+          border-bottom: 1px solid ${rowSep};
+        }
         .dual-cell {
           display: flex;
           flex-direction: column;
           justify-content: center;
           align-items: center;
         }
-        .team-cell { text-align: left; padding-left: 8px; }
-        .team-row { display: flex; align-items: center; line-height: 1.3em; }
+        .dual-cell > * {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .team-cell {
+          text-align: left;
+          vertical-align: middle;
+          padding-left: 8px;
+        }
+        .team-row {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          line-height: 1.3em;
+        }
         .bold { font-weight: 600; }
         .dim { opacity: 0.8; }
         .result-circle {
@@ -94,8 +119,12 @@ class MatchesCard extends HTMLElement {
       </style>
     `;
 
+    // -------------------------
+    // TABELA
+    // -------------------------
     const rows = matches
       .map((match) => {
+        // Data/czas
         const rawDate = match.date ? match.date.replace(" ", "T") : null;
         const dateObj = rawDate ? new Date(rawDate) : null;
         const dateStr = dateObj
@@ -107,10 +136,21 @@ class MatchesCard extends HTMLElement {
           ? dateObj.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
           : "";
 
-        const [homeScore, awayScore] = (match.score || "-").split("-");
-        const homeBold = match.result === "win" ? "bold" : match.result === "loss" ? "dim" : "";
-        const awayBold = match.result === "loss" ? "bold" : match.result === "win" ? "dim" : "";
+        // Wynik / wytłuszczenia
+        const resultClass =
+          match.result === "win" ? "row-win"
+          : match.result === "loss" ? "row-loss"
+          : match.result === "draw" ? "row-draw"
+          : "";
 
+        const homeBold =
+          match.result === "win" ? "bold" : match.result === "loss" ? "dim" : "";
+        const awayBold =
+          match.result === "loss" ? "bold" : match.result === "win" ? "dim" : "";
+
+        const [homeScore, awayScore] = (match.score || "-").split("-");
+
+        // Liga (ikona)
         const leagueIcon =
           match.league === "L"
             ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/ekstraklasa.png"
@@ -118,9 +158,11 @@ class MatchesCard extends HTMLElement {
             ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/puchar.png"
             : null;
 
-        const homeTeam = this.config.full_team_names ? match.home : (match.home || "").split(" ")[0];
-        const awayTeam = this.config.full_team_names ? match.away : (match.away || "").split(" ")[0];
+        // Nazwy drużyn
+        const homeTeam = this.config.full_team_names ? (match.home || "") : ((match.home || "").split(" ")[0] || "");
+        const awayTeam = this.config.full_team_names ? (match.away || "") : ((match.away || "").split(" ")[0] || "");
 
+        // --- Gradient RGBA dla całego wiersza ---
         const colorHex = (this.config.colors && match.result) ? this.config.colors[match.result] : "#000000";
         const rgbaColor = this.hexToRgba(colorHex, this.config.gradient.alpha);
 
@@ -130,7 +172,7 @@ class MatchesCard extends HTMLElement {
             : "";
 
         return `
-          <tr style="${gradientCSS}">
+          <tr class="${resultClass}" style="${gradientCSS}">
             <td style="width:${this.config.columns_pct.date}%;">
               <div style="font-size:${this.config.font_size.date}em;">${dateStr}</div>
               <div style="font-size:${this.config.font_size.status}em;">${timeStr}</div>
@@ -142,11 +184,15 @@ class MatchesCard extends HTMLElement {
                   : `<div style="font-size:0.9em;opacity:0.8;">${match.league ?? ""}</div>`
               }
             </td>
-            ${this.config.show_logos ? `
+            ${
+              this.config.show_logos
+                ? `
               <td class="dual-cell" style="width:${this.config.columns_pct.crest}%;">
                 <div><img src="${match.logo_home || ""}" height="${this.config.icon_size.crest}" style="background:white;border-radius:6px;padding:2px;" /></div>
                 <div><img src="${match.logo_away || ""}" height="${this.config.icon_size.crest}" style="background:white;border-radius:6px;padding:2px;" /></div>
-              </td>` : ""}
+              </td>`
+                : ""
+            }
             <td class="team-cell">
               <div class="team-row ${homeBold}" style="font-size:${this.config.font_size.teams}em;">${homeTeam}</div>
               <div class="team-row ${awayBold}" style="font-size:${this.config.font_size.teams}em;">${awayTeam}</div>
@@ -170,11 +216,19 @@ class MatchesCard extends HTMLElement {
     const cardName =
       this.config.show_name === false
         ? ""
-        : this.config.name || stateObj.attributes.friendly_name || "90minut Matches";
+        : this.config.name ||
+          stateObj.attributes.friendly_name ||
+          "90minut Matches";
 
-    this.innerHTML = `${style}<ha-card ${cardName ? `header="${cardName}"` : ""}><table>${rows}</table></ha-card>`;
+    this.innerHTML = `
+      ${style}
+      <ha-card ${cardName ? `header="${cardName}"` : ""}>
+        <table>${rows}</table>
+      </ha-card>
+    `;
   }
 
+  // HEX -> rgba (obsługa #rgb i #rrggbb)
   hexToRgba(hex, alpha = 1) {
     if (!hex) return `rgba(0,0,0,${alpha})`;
     let c = hex.replace("#", "").trim();
@@ -187,10 +241,15 @@ class MatchesCard extends HTMLElement {
     return `rgba(${r},${g},${b},${alpha})`;
   }
 
-  getCardSize() { return 6; }
+  getCardSize() {
+    return 6;
+  }
 
-  static getConfigElement() { return document.createElement("matches-card-editor"); }
+  static getConfigElement() {
+    return document.createElement("matches-card-editor");
+  }
 
+  // Pełny stub – edytor od razu ma komplet wartości
   static getStubConfig() {
     return {
       entity: "sensor.90minut_gornik_zabrze_matches",

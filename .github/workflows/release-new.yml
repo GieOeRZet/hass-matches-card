@@ -1,10 +1,10 @@
-name: Build & Release Matches Card
+name: Release Matches Card
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Podaj numer wersji (np. v0.3.002)"
+        description: "Podaj numer wersji (np. v0.3.006)"
         required: true
 
 permissions:
@@ -12,11 +12,9 @@ permissions:
 
 jobs:
   build-release:
-    name: Build ZIP and Create Release
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set version variable
@@ -24,29 +22,35 @@ jobs:
         run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
       - name: Display version
-        run: echo "Releasing version ${{ env.VERSION }}"
+        run: echo "Building release version ${{ env.VERSION }}"
 
-      - name: Prepare package folder
+      # Aktualizacja numeru wersji w manifest.json i hacs.json
+      - name: Update version numbers
+        run: |
+          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/g" manifest.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/g" hacs.json
+
+      # Utworzenie paczki ZIP bez folderu nadrzędnego
+      - name: Create package ZIP
         run: |
           mkdir -p package/translations
           mkdir -p package/logo
           cp matches-card.js matches-card-editor.js manifest.json hacs.json package/
           cp -r translations/* package/translations/ || true
           cp -r logo/* package/logo/ || true
-
-      - name: Create ZIP package
-        run: |
           cd package
-          zip -r ../matches-card-${{ env.VERSION }}.zip .
+          zip -r ../matches-card-${VERSION}.zip .
           cd ..
 
-      - name: Delete previous release with same tag (if exists)
+      # Usunięcie poprzedniego release o tym samym tagu
+      - name: Delete previous release (if exists)
         uses: dev-drprasad/delete-tag-and-release@v1.0
         with:
           tag_name: ${{ env.VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Utworzenie nowego release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -57,9 +61,11 @@ jobs:
           files: matches-card-${{ env.VERSION }}.zip
           body: |
             ## Matches Card ${{ env.VERSION }}
-            Nowa wersja automatycznie zbudowana i gotowa do instalacji przez HACS.
+            Automatycznie zbudowana wersja karty gotowa do instalacji przez HACS.
+
             **Zmiany:**
-            - poprawione ścieżki i struktura ZIP dla HACS
+            - aktualizacja wersji w manifest.json i hacs.json
+            - poprawna struktura ZIP (działa w HACS)
             - automatyczny build przez GitHub Actions
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

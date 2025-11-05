@@ -5,7 +5,7 @@
   "render_readme": true,
   "content_in_root": true,
   "homeassistant": "2024.8.0",
-  "version": "v0.3.006",
+  "version": "0.3.007",
   "file_patterns": [
     "matches-card.js",
     "matches-card-editor.js",

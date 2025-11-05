@@ -1,4 +1,4 @@
-name: Release Matches Card nowy build
+name: Build & Release Matches Card
 
 on:
   workflow_dispatch:

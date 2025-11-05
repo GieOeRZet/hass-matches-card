@@ -6,9 +6,6 @@ on:
       version:
         description: "Podaj numer wersji (np. v0.3.002)"
         required: true
-  push:
-    tags:
-      - 'v*.*.*'
 
 permissions:
   contents: write
@@ -23,26 +20,27 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set version variable
-        id: vars
-        run: |
-          if [ "${{ github.event.inputs.version }}" != "" ]; then
-            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-          else
-            echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
-          fi
+        id: setver
+        run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
-      - name: Create ZIP package
+      - name: Display version
+        run: echo "Releasing version ${{ env.VERSION }}"
+
+      - name: Prepare package folder
         run: |
           mkdir -p package/translations
           mkdir -p package/logo
           cp matches-card.js matches-card-editor.js manifest.json hacs.json package/
           cp -r translations/* package/translations/ || true
           cp -r logo/* package/logo/ || true
+
+      - name: Create ZIP package
+        run: |
           cd package
-          zip -r ../matches-card-${VERSION}.zip .
+          zip -r ../matches-card-${{ env.VERSION }}.zip .
           cd ..
 
-      - name: Delete previous release (if exists)
+      - name: Delete previous release with same tag (if exists)
         uses: dev-drprasad/delete-tag-and-release@v1.0
         with:
           tag_name: ${{ env.VERSION }}
@@ -52,13 +50,13 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: "Matches Card ${VERSION}"
+          name: "Matches Card ${{ env.VERSION }}"
           tag_name: ${{ env.VERSION }}
           draft: false
           prerelease: false
           files: matches-card-${{ env.VERSION }}.zip
           body: |
-            ## Matches Card ${VERSION}
+            ## Matches Card ${{ env.VERSION }}
             Nowa wersja automatycznie zbudowana i gotowa do instalacji przez HACS.
             **Zmiany:**
             - poprawione ścieżki i struktura ZIP dla HACS

@@ -3,7 +3,7 @@
   "filename": "matches-card.js",
   "type": "plugin",
   "render_readme": true,
-  "version": "v0.3.001",
+  "version": "0.3.001",
   "file_patterns": [
     "matches-card.js",
     "matches-card-editor.js",

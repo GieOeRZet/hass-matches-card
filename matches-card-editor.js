@@ -1,293 +1,234 @@
 // ============================================================================
-//  Matches Card Editor – v0.3.001 (pełny)
-//  Pasuje do: Matches Card (90minut) v0.3.001
-//  Funkcje:
-//   - Pełny zestaw pól YAML (entity, name, show_*, fill_mode, theme_mode,
-//     gradient.{alpha,start,end}, colors.{win,draw,loss},
-//     font_size.{date,status,teams,score}, icon_size.{league,crest,result},
-//     columns_pct.{date,league,crest,score,result})
-//   - Zwijane sekcje (<details>) z subtelnym cieniowaniem
-//   - Automatyczne wypełnianie wartości domyślnych (spójne z getStubConfig())
-//   - Brak importów, gotowe pod HA Lovelace GUI
+//  Matches Card Editor – v0.3.001 SmartSectionsPro
+//  - Sekcje tematyczne, dynamiczne pokazywanie gradientu
+//  - Wszystkie liczby jako inputy (mode: "box")
+//  - Reset do domyślnych wartości
 // ============================================================================
 
 class MatchesCardEditor extends HTMLElement {
-  setConfig(config) {
-    // Utrzymaj referencję na konfigurację i wstrzyknij domyślne wartości,
-    // aby edytor ZAWSZE miał komplet pól (w GUI i YAML).
-    this._config = config ? JSON.parse(JSON.stringify(config)) : {};
-    this._applyDefaults();
-    this.render();
+  constructor() {
+    super();
+    this._config = {};
+    this._flat = {};
   }
 
-  connectedCallback() {
-    if (this.isConnected && !this.innerHTML) {
-      this._applyDefaults();
-      this.render();
-    }
-  }
-
-  // ---- DOMYŚLNE WARTOŚCI – zgodne z getStubConfig() karty v0.3.001 ----
-  _applyDefaults() {
-    const d = {
-      entity: "",
+  // Domyślna konfiguracja (spójna z kartą)
+  _defaults() {
+    return {
       name: "90minut Matches",
       show_name: true,
       show_logos: true,
       full_team_names: true,
       show_result_symbols: true,
-      fill_mode: "gradient", // gradient | zebra | none
-      theme_mode: "auto",    // auto | light | dark
+      fill_mode: "gradient",
+      theme_mode: "auto",
       font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
       icon_size: { league: 26, crest: 24, result: 26 },
       gradient: { alpha: 0.5, start: 35, end: 100 },
       columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
-      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" }
+      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
+    };
+  }
+
+  setConfig(config) {
+    this._config = this._mergeDeep(this._defaults(), config || {});
+    this._flat = this._flatten(this._config);
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (this._forms) this._forms.forEach((f) => (f.hass = hass));
+  }
+
+  // ---------- RENDER ----------
+  _render() {
+    if (!this._root) {
+      this._root = document.createElement("div");
+      this._root.style.padding = "8px";
+      this.appendChild(this._root);
+    }
+    this._root.innerHTML = "";
+
+    const section = (title) => {
+      const wrap = document.createElement("div");
+      wrap.style.margin = "12px 0";
+      wrap.style.border = "1px solid var(--divider-color, rgba(0,0,0,0.12))";
+      wrap.style.borderRadius = "8px";
+      const head = document.createElement("div");
+      head.textContent = title;
+      head.style.fontWeight = "600";
+      head.style.padding = "10px 12px";
+      head.style.background = "var(--card-background-color)";
+      head.style.borderBottom = "1px solid var(--divider-color, rgba(0,0,0,0.12))";
+      wrap.appendChild(head);
+      const body = document.createElement("div");
+      body.style.padding = "8px 12px";
+      wrap.appendChild(body);
+      this._root.appendChild(wrap);
+      return body;
     };
 
-    const c = (this._config ||= {});
-    // Proste scalanie obiektów z domyślnymi
-    for (const k of Object.keys(d)) {
-      if (c[k] === undefined) {
-        c[k] = JSON.parse(JSON.stringify(d[k]));
-      } else if (typeof d[k] === "object" && d[k] !== null) {
-        for (const sk of Object.keys(d[k])) {
-          if (c[k][sk] === undefined) c[k][sk] = d[k][sk];
-        }
+    this._forms = [];
+
+    // --- Sekcja: Podstawowe ---
+    const sBasic = section("Podstawowe");
+    const schemaBasic = [
+      { name: "entity", selector: { entity: {} } },
+      { name: "name", selector: { text: {} } },
+      { name: "show_name", selector: { boolean: {} }, description: "Pokazuj nagłówek karty" },
+      { name: "show_logos", selector: { boolean: {} }, description: "Pokazuj herby drużyn" },
+      { name: "full_team_names", selector: { boolean: {} }, description: "Pełne nazwy drużyn" },
+      { name: "show_result_symbols", selector: { boolean: {} }, description: "Symbol W/R/P" },
+    ];
+    sBasic.appendChild(this._makeForm(schemaBasic));
+
+    // --- Sekcja: Wygląd i tryb ---
+    const sLook = section("Wygląd");
+    const schemaLook = [
+      { name: "fill_mode", selector: { select: { options: ["gradient", "zebra", "none"] } } },
+      { name: "theme_mode", selector: { select: { options: ["auto", "light", "dark"] } }, description: "Podgląd jasny/ciemny (lekki wpływ na kontrasty)" },
+    ];
+    sLook.appendChild(this._makeForm(schemaLook));
+
+    // --- Sekcja: Gradient (pokazuj tylko gdy fill_mode=gradient) ---
+    if (this._flat["fill_mode"] === "gradient") {
+      const sGrad = section("Gradient");
+      const schemaGrad = [
+        { name: "gradient.alpha", label: "Przezroczystość (0–1)", selector: { number: { mode: "box", min: 0, max: 1, step: 0.1 } } },
+        { name: "gradient.start", label: "Start (%)",              selector: { number: { mode: "box", min: 0, max: 100, step: 1 } } },
+        { name: "gradient.end",   label: "Koniec (%)",             selector: { number: { mode: "box", min: 0, max: 100, step: 1 } } },
+      ];
+      sGrad.appendChild(this._makeForm(schemaGrad));
+    }
+
+    // --- Sekcja: Kolory wyników ---
+    const sColors = section("Kolory wyników");
+    const schemaColors = [
+      { name: "colors.win",  label: "Wygrana", selector: { color: {} } },
+      { name: "colors.draw", label: "Remis",   selector: { color: {} } },
+      { name: "colors.loss", label: "Porażka", selector: { color: {} } },
+    ];
+    sColors.appendChild(this._makeForm(schemaColors));
+
+    // --- Sekcja: Rozmiary czcionek ---
+    const sFonts = section("Rozmiary czcionek (em)");
+    const schemaFonts = [
+      { name: "font_size.date",   label: "Data",   selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.status", label: "Status", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.teams",  label: "Zespoły",selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.score",  label: "Wynik",  selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+    ];
+    sFonts.appendChild(this._makeForm(schemaFonts));
+
+    // --- Sekcja: Rozmiary ikon ---
+    const sIcons = section("Rozmiary ikon (px)");
+    const schemaIcons = [
+      { name: "icon_size.league", label: "Liga",   selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+      { name: "icon_size.crest",  label: "Herb",   selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+      { name: "icon_size.result", label: "Symbol", selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+    ];
+    sIcons.appendChild(this._makeForm(schemaIcons));
+
+    // --- Sekcja: Układ kolumn ---
+    const sCols = section("Układ kolumn (%)");
+    const schemaCols = [
+      { name: "columns_pct.date",   label: "Data",   selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.league", label: "Liga",   selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.crest",  label: "Herby",  selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.score",  label: "Wynik",  selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.result", label: "Symbol", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+    ];
+    sCols.appendChild(this._makeForm(schemaCols));
+
+    // --- Reset ---
+    const resetWrap = document.createElement("div");
+    resetWrap.style.textAlign = "right";
+    resetWrap.style.marginTop = "8px";
+    const btn = document.createElement("mwc-button");
+    btn.label = "🔄 Przywróć domyślne";
+    btn.addEventListener("click", () => {
+      const def = this._defaults();
+      // zachowaj entity z bieżącej konfiguracji
+      if (this._config.entity) def.entity = this._config.entity;
+      this._config = this._mergeDeep({}, def);
+      this._flat = this._flatten(this._config);
+      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+      this._render();
+    });
+    this._root.appendChild(resetWrap);
+    resetWrap.appendChild(btn);
+  }
+
+  _makeForm(schema) {
+    const form = document.createElement("ha-form");
+    form.hass = this._hass;
+    form.data = this._flat;   // spłaszczone dane (klucze z kropkami)
+    form.schema = schema;
+    form.addEventListener("value-changed", (ev) => {
+      // ha-form zwraca całą płaską mapę (dla tego formularza)
+      const partialFlat = ev.detail.value || {};
+      // uaktualnij _flat tylko o zmienione klucze
+      Object.assign(this._flat, partialFlat);
+      // odbuduj strukturę zagnieżdżoną
+      const nested = this._unflatten(this._flat);
+      // scal z istniejącą konfiguracją (aby nie gubić pól)
+      this._config = this._mergeDeep(this._config, nested);
+      // emituj do karty
+      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+
+      // jeżeli zmieniono fill_mode, prze-renderuj sekcje (pokaz/ukryj gradient)
+      if (Object.prototype.hasOwnProperty.call(partialFlat, "fill_mode")) {
+        this._render();
       }
-    }
+    });
+    this._forms.push(form);
+    return form;
   }
 
-  // ---- RENDER ----
-  render() {
-    const c = this._config;
-
-    this.innerHTML = `
-      <style>
-        .editor { padding: 10px; display: grid; gap: 10px; }
-
-        details.section {
-          border-radius: 8px;
-          border: 1px solid rgba(0,0,0,0.15);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-          background: var(--card-background-color, #fff);
-          overflow: hidden;
-        }
-        summary {
-          cursor: pointer;
-          font-weight: 600;
-          padding: 10px 12px;
-          background: var(--secondary-background-color, #f4f4f4);
-          user-select: none;
-          list-style: none;
-        }
-        summary::-webkit-details-marker { display: none; }
-        summary:after {
-          content: "▸";
-          float: right;
-          opacity: 0.6;
-          transition: transform 0.2s ease;
-        }
-        details[open] summary:after { transform: rotate(90deg); }
-
-        .section-content {
-          padding: 10px 12px 12px;
-          background: var(--card-background-color, #fff);
-        }
-
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-
-        label { font-weight: 500; display: block; margin: 4px 0; }
-        input[type="text"], input[type="number"], select {
-          width: 100%;
-          padding: 6px;
-          border-radius: 6px;
-          border: 1px solid var(--divider-color, #ccc);
-          background: var(--card-background-color, #fff);
-          color: var(--primary-text-color);
-        }
-        input[type="color"] {
-          width: 100%;
-          height: 34px;
-          border: 1px solid var(--divider-color, #ccc);
-          border-radius: 6px;
-          padding: 0;
-        }
-        .checkbox {
-          display: flex; align-items: center; gap: 8px; margin: 2px 0;
-        }
-        .help {
-          font-size: 0.85em;
-          opacity: 0.75;
-          margin-top: 2px;
-        }
-
-        @media (max-width: 520px) {
-          .grid2, .grid3 { grid-template-columns: 1fr; }
-        }
-      </style>
-
-      <div class="editor">
-
-        ${this._section("Podstawowe", `
-          <label>Encja (entity)</label>
-          <input id="entity" type="text" value="${this._esc(c.entity)}" placeholder="sensor.90minut_gornik_zabrze_matches">
-
-          <label>Nazwa karty</label>
-          <input id="name" type="text" value="${this._esc(c.name)}">
-
-          <div class="grid2">
-            ${this._checkbox("show_name", c.show_name, "Pokaż nagłówek")}
-            ${this._checkbox("show_logos", c.show_logos, "Pokaż logotypy")}
-            ${this._checkbox("full_team_names", c.full_team_names, "Pełne nazwy drużyn")}
-            ${this._checkbox("show_result_symbols", c.show_result_symbols, "Symbole wyników (W/R/P)")}
-          </div>
-
-          <label>Tryb motywu (theme_mode)</label>
-          <select id="theme_mode">
-            ${this._opt("auto", c.theme_mode)}${this._opt("light", c.theme_mode)}${this._opt("dark", c.theme_mode)}
-          </select>
-
-          <label>Tryb wypełnienia (fill_mode)</label>
-          <select id="fill_mode">
-            ${this._opt("gradient", c.fill_mode)}${this._opt("zebra", c.fill_mode)}${this._opt("none", c.fill_mode)}
-          </select>
-          <div class="help">Gradient działa z kolorami wyniku; zebra używa kontrastowego tła sekcji parzystych.</div>
-        `)}
-
-        ${this._section("Gradient", `
-          <div class="grid3">
-            ${this._num("gradient.alpha", c.gradient.alpha, "Przezroczystość (0–1)", 0, 1, 0.05)}
-            ${this._num("gradient.start", c.gradient.start, "Początek (%)", 0, 100, 1)}
-            ${this._num("gradient.end", c.gradient.end, "Koniec (%)", 0, 100, 1)}
-          </div>
-        `)}
-
-        ${this._section("Kolory wyników", `
-          <div class="grid3">
-            ${this._color("colors.win", c.colors.win, "Kolor – wygrana")}
-            ${this._color("colors.draw", c.colors.draw, "Kolor – remis")}
-            ${this._color("colors.loss", c.colors.loss, "Kolor – porażka")}
-          </div>
-        `)}
-
-        ${this._section("Czcionki (em) i ikony (px)", `
-          <div class="grid3">
-            ${this._num("font_size.date", c.font_size.date, "Data (em)", 0.4, 3, 0.1)}
-            ${this._num("font_size.status", c.font_size.status, "Status (em)", 0.4, 3, 0.1)}
-            ${this._num("font_size.teams", c.font_size.teams, "Drużyny (em)", 0.4, 3, 0.1)}
-            ${this._num("font_size.score", c.font_size.score, "Wynik (em)", 0.4, 3, 0.1)}
-            ${this._num("icon_size.league", c.icon_size.league, "Ikona ligi (px)", 10, 96, 1)}
-            ${this._num("icon_size.crest", c.icon_size.crest, "Herb klubu (px)", 10, 96, 1)}
-            ${this._num("icon_size.result", c.icon_size.result, "Symbol wyniku (px)", 10, 96, 1)}
-          </div>
-        `)}
-
-        ${this._section("Układ kolumn (%)", `
-          <div class="grid3">
-            ${this._num("columns_pct.date", c.columns_pct.date, "Data (%)", 0, 60, 1)}
-            ${this._num("columns_pct.league", c.columns_pct.league, "Liga (%)", 0, 60, 1)}
-            ${this._num("columns_pct.crest", c.columns_pct.crest, "Herby (%)", 0, 60, 1)}
-            ${this._num("columns_pct.score", c.columns_pct.score, "Wynik (%)", 0, 60, 1)}
-            ${this._num("columns_pct.result", c.columns_pct.result, "Symbol (%)", 0, 60, 1)}
-          </div>
-          <div class="help">Uwaga: suma szerokości nie musi równać się 100% – pozostałe pole (drużyny) dopasuje się elastycznie.</div>
-        `)}
-
-      </div>
-    `;
-
-    // Zwiń sekcje na start
-    this.querySelectorAll("details.section").forEach(d => d.open = false);
-
-    // Nasłuch zmian
-    this.querySelectorAll("input,select").forEach((el) =>
-      el.addEventListener("change", (ev) => this._onInput(ev))
-    );
+  get value() {
+    return this._config;
   }
 
-  // ---- POMOCNICZE GENERATORY POL ----
-  _checkbox(id, checked, label) {
-    return `
-      <div class="checkbox">
-        <input id="${id}" type="checkbox" ${checked ? "checked" : ""}>
-        <span>${label}</span>
-      </div>
-    `;
+  // ---------- UTIL: flatten / unflatten / merge ----------
+  _flatten(obj, prefix = "", res = {}) {
+    Object.entries(obj || {}).forEach(([k, v]) => {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        this._flatten(v, key, res);
+      } else {
+        res[key] = v;
+      }
+    });
+    return res;
   }
 
-  _num(id, value, label, min = null, max = null, step = null) {
-    const attrs = [
-      min !== null ? `min="${min}"` : "",
-      max !== null ? `max="${max}"` : "",
-      step !== null ? `step="${step}"` : ""
-    ].join(" ");
-    return `
-      <div>
-        <label>${label}</label>
-        <input id="${id}" type="number" value="${this._esc(value)}" ${attrs}>
-      </div>
-    `;
+  _unflatten(flat) {
+    const result = {};
+    Object.entries(flat || {}).forEach(([path, value]) => {
+      const parts = path.split(".");
+      let cur = result;
+      while (parts.length > 1) {
+        const p = parts.shift();
+        if (!(p in cur) || typeof cur[p] !== "object") cur[p] = {};
+        cur = cur[p];
+      }
+      cur[parts[0]] = value;
+    });
+    return result;
   }
 
-  _color(id, value, label) {
-    return `
-      <div>
-        <label>${label}</label>
-        <input id="${id}" type="color" value="${this._esc(value)}">
-      </div>
-    `;
-  }
-
-  _opt(val, current) {
-    return `<option value="${val}" ${current === val ? "selected" : ""}>${val}</option>`;
-  }
-
-  _section(title, innerHtml) {
-    return `
-      <details class="section">
-        <summary>${title}</summary>
-        <div class="section-content">${innerHtml}</div>
-      </details>
-    `;
-  }
-
-  _esc(v) {
-    if (v === undefined || v === null) return "";
-    return String(v).replace(/"/g, "&quot;");
-  }
-
-  // ---- ZMIANA WARTOŚCI → WYŚLIJ 'config-changed' ----
-  _onInput(ev) {
-    const el = ev.target;
-    const key = el.id;
-    let val;
-
-    if (el.type === "checkbox") {
-      val = el.checked;
-    } else if (el.type === "number") {
-      const num = parseFloat(el.value);
-      val = Number.isNaN(num) ? el.value : num;
-    } else {
-      val = el.value;
-    }
-
-    // Wsparcie ścieżek z kropką, np. "gradient.alpha"
-    const cfg = JSON.parse(JSON.stringify(this._config || {}));
-    const path = key.split(".");
-    if (path.length === 2) {
-      cfg[path[0]] = cfg[path[0]] || {};
-      cfg[path[0]][path[1]] = val;
-    } else {
-      cfg[key] = val;
-    }
-
-    this._config = cfg;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: cfg } }));
+  _mergeDeep(target, source) {
+    const out = Array.isArray(target) ? [...target] : { ...(target || {}) };
+    Object.entries(source || {}).forEach(([key, value]) => {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        out[key] = this._mergeDeep(out[key] || {}, value);
+      } else {
+        out[key] = value;
+      }
+    });
+    return out;
   }
 }
 
-if (!customElements.get("matches-card-editor")) {
-  customElements.define("matches-card-editor", MatchesCardEditor);
-}
+customElements.define("matches-card-editor", MatchesCardEditor);

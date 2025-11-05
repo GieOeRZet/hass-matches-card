@@ -7,6 +7,8 @@
   "homeassistant": "2024.8.0",
   "documentation": "https://github.com/GieOeRZet/matches-card",
   "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "codeowners": ["@GieOeRZet"],
+  "codeowners": [
+    "@GieOeRZet"
+  ],
   "content_in_root": true
 }

@@ -1,13 +1,13 @@
 {
   "domain": "matches_card",
   "name": "Matches Card (90minut)",
-  "filename": "matches-card.js",
-  "type": "plugin",
-  "content_in_root": true,
-  "render_readme": true,
-  "version": "0.3.010",
-  "homeassistant": "2024.8.0",
   "documentation": "https://github.com/GieOeRZet/matches-card",
-  "issue_tracker": "https://github.com/GieOeRZet/matches-card/issues",
-  "codeowners": ["@GieOeRZet"]
+  "version": "0.3.009",
+  "resources": [
+    {
+      "type": "module",
+      "url": "https://github.com/GieOeRZet/matches-card/releases/download/0.3.009/matches-card.js"
+    }
+  ],
+  "render_readme": true
 }

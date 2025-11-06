@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Numer wersji (np. 0.3.011)"
+        description: "Numer wersji (np. 0.3.013)"
         required: true
-        default: "0.3.011"
+        default: "0.3.013"
 
 jobs:
   build:
@@ -30,13 +30,15 @@ jobs:
       - name: 🧹 Clean dist directory
         run: rm -rf dist && mkdir -p dist
 
-      - name: 📦 Create release ZIP (auto folder)
+      - name: 📦 Create release ZIP (flat structure for HACS)
         run: |
-          mkdir -p package/matches-card
-          cp -r matches-card.js matches-card-editor.js manifest.json hacs.json README.md logo package/matches-card/
-          cd package
-          zip -r ../dist/matches-card-${VERSION}.zip matches-card
-          cd ..
+          zip -r dist/matches-card-${VERSION}.zip \
+            matches-card.js \
+            matches-card-editor.js \
+            manifest.json \
+            hacs.json \
+            README.md \
+            logo
           echo "✅ ZIP created: dist/matches-card-${VERSION}.zip"
 
       - name: 🏷️ Commit and tag version
@@ -59,10 +61,10 @@ jobs:
             Automatycznie zbudowana wersja karty gotowa do instalacji przez HACS.
 
             🔄 Zmiany:
-            - folder `matches-card/` generowany automatycznie w paczce
-            - `content_in_root: false`
-            - automatyczna aktualizacja wersji w manifestach
-            - pełna zgodność z HACS 2024+
+            - płaska struktura ZIP (HACS auto-rozpakowanie)
+            - content_in_root: true
+            - automatyczna aktualizacja wersji
+            - zgodność z HACS 2024+
           draft: false
           prerelease: false
           files: ./dist/matches-card-${{ env.VERSION }}.zip

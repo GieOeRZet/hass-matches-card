@@ -23,17 +23,19 @@ jobs:
 
       - name: 🧮 Update version in manifests
         run: |
-          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" matches-card/manifest.json
-          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" matches-card/hacs.json || true
+          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" manifest.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" hacs.json || true
           echo "✅ Updated version to ${VERSION}"
 
       - name: 🧹 Clean dist directory
         run: rm -rf dist && mkdir -p dist
 
-      - name: 📦 Create release ZIP (entire matches-card/ folder)
+      - name: 📦 Create release ZIP (auto folder)
         run: |
-          cd matches-card
-          zip -r ../dist/matches-card-${VERSION}.zip .
+          mkdir -p package/matches-card
+          cp -r matches-card.js matches-card-editor.js manifest.json hacs.json README.md logo package/matches-card/
+          cd package
+          zip -r ../dist/matches-card-${VERSION}.zip matches-card
           cd ..
           echo "✅ ZIP created: dist/matches-card-${VERSION}.zip"
 
@@ -41,7 +43,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add matches-card/manifest.json matches-card/hacs.json
+          git add manifest.json hacs.json
           git commit -m "Release ${VERSION}" || echo "No changes to commit"
           git tag -fa "${VERSION}" -m "Automated release ${VERSION}"
           git push origin "${VERSION}" --force
@@ -57,10 +59,10 @@ jobs:
             Automatycznie zbudowana wersja karty gotowa do instalacji przez HACS.
 
             🔄 Zmiany:
-            - folder `logo/` dołączony do paczki
-            - poprawne `content_in_root: false`
+            - folder `matches-card/` generowany automatycznie w paczce
+            - `content_in_root: false`
             - automatyczna aktualizacja wersji w manifestach
-            - zgodność z HACS 2024+
+            - pełna zgodność z HACS 2024+
           draft: false
           prerelease: false
           files: ./dist/matches-card-${{ env.VERSION }}.zip

@@ -1,18 +1,12 @@
-// ============================================================================
-//  Matches Card Editor – v0.3.001 SmartSectionsPro
-//  - Sekcje tematyczne, dynamiczne pokazywanie gradientu
-//  - Wszystkie liczby jako inputy (mode: "box")
-//  - Reset do domyślnych wartości
-// ============================================================================
-
 class MatchesCardEditor extends HTMLElement {
   constructor() {
     super();
     this._config = {};
     this._flat = {};
+    this._forms = [];
+    this._renderTimer = null;
   }
 
-  // Domyślna konfiguracja (spójna z kartą)
   _defaults() {
     return {
       name: "90minut Matches",
@@ -26,7 +20,7 @@ class MatchesCardEditor extends HTMLElement {
       icon_size: { league: 26, crest: 24, result: 26 },
       gradient: { alpha: 0.5, start: 35, end: 100 },
       columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
-      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
+      colors: { win: "#3ba55d", draw: "#468cd2", loss: "#e23b3b" }
     };
   }
 
@@ -41,164 +35,156 @@ class MatchesCardEditor extends HTMLElement {
     if (this._forms) this._forms.forEach((f) => (f.hass = hass));
   }
 
-  // ---------- RENDER ----------
   _render() {
     if (!this._root) {
       this._root = document.createElement("div");
+      this._root.style.maxWidth = "580px";
+      this._root.style.margin = "0 auto";
       this._root.style.padding = "8px";
       this.appendChild(this._root);
     }
     this._root.innerHTML = "";
-
-    const section = (title) => {
-      const wrap = document.createElement("div");
-      wrap.style.margin = "12px 0";
-      wrap.style.border = "1px solid var(--divider-color, rgba(0,0,0,0.12))";
-      wrap.style.borderRadius = "8px";
-      const head = document.createElement("div");
-      head.textContent = title;
-      head.style.fontWeight = "600";
-      head.style.padding = "10px 12px";
-      head.style.background = "var(--card-background-color)";
-      head.style.borderBottom = "1px solid var(--divider-color, rgba(0,0,0,0.12))";
-      wrap.appendChild(head);
-      const body = document.createElement("div");
-      body.style.padding = "8px 12px";
-      wrap.appendChild(body);
-      this._root.appendChild(wrap);
-      return body;
-    };
-
     this._forms = [];
 
-    // --- Sekcja: Podstawowe ---
-    const sBasic = section("Podstawowe");
-    const schemaBasic = [
+    const css = document.createElement("style");
+    css.textContent = `
+      h4{margin:12px 0 4px;padding-bottom:2px;border-bottom:1px solid var(--divider-color);
+        color:var(--primary-text-color);font-weight:600;font-size:.95em}
+      ha-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+        gap:6px 8px;margin-bottom:8px}
+      input[type="color"]{width:100%;height:32px;border-radius:6px;border:none;cursor:pointer;}
+      input[type="number"]{width:100%;height:30px;padding:2px 4px;border-radius:6px;
+        border:1px solid var(--divider-color);background:var(--card-background-color);
+        color:var(--primary-text-color);}
+      mwc-button{float:right;margin-top:12px}
+    `;
+    this._root.appendChild(css);
+
+    const sec = (title, schema) => {
+      this._root.appendChild(this._header(title));
+      this._root.appendChild(this._makeForm(schema));
+    };
+
+    sec("🧩 Podstawowe", [
       { name: "entity", selector: { entity: {} } },
       { name: "name", selector: { text: {} } },
-      { name: "show_name", selector: { boolean: {} }, description: "Pokazuj nagłówek karty" },
-      { name: "show_logos", selector: { boolean: {} }, description: "Pokazuj herby drużyn" },
-      { name: "full_team_names", selector: { boolean: {} }, description: "Pełne nazwy drużyn" },
-      { name: "show_result_symbols", selector: { boolean: {} }, description: "Symbol W/R/P" },
-    ];
-    sBasic.appendChild(this._makeForm(schemaBasic));
+      { name: "show_name", selector: { boolean: {} } },
+      { name: "show_logos", selector: { boolean: {} } },
+      { name: "full_team_names", selector: { boolean: {} } },
+      { name: "show_result_symbols", selector: { boolean: {} } },
+    ]);
 
-    // --- Sekcja: Wygląd i tryb ---
-    const sLook = section("Wygląd");
-    const schemaLook = [
+    sec("🎨 Wygląd", [
       { name: "fill_mode", selector: { select: { options: ["gradient", "zebra", "none"] } } },
-      { name: "theme_mode", selector: { select: { options: ["auto", "light", "dark"] } }, description: "Podgląd jasny/ciemny (lekki wpływ na kontrasty)" },
-    ];
-    sLook.appendChild(this._makeForm(schemaLook));
+      { name: "theme_mode", selector: { select: { options: ["auto", "light", "dark"] } } },
+    ]);
 
-    // --- Sekcja: Gradient (pokazuj tylko gdy fill_mode=gradient) ---
     if (this._flat["fill_mode"] === "gradient") {
-      const sGrad = section("Gradient");
-      const schemaGrad = [
-        { name: "gradient.alpha", label: "Przezroczystość (0–1)", selector: { number: { mode: "box", min: 0, max: 1, step: 0.1 } } },
-        { name: "gradient.start", label: "Start (%)",              selector: { number: { mode: "box", min: 0, max: 100, step: 1 } } },
-        { name: "gradient.end",   label: "Koniec (%)",             selector: { number: { mode: "box", min: 0, max: 100, step: 1 } } },
-      ];
-      sGrad.appendChild(this._makeForm(schemaGrad));
+      sec("🌈 Gradient", [
+        { name: "gradient.alpha", label: "Przezroczystość", selector: { number: { min: 0, max: 1, step: 0.05 } } },
+        { name: "gradient.start", label: "Start (%)", selector: { number: { min: 0, max: 100, step: 1 } } },
+        { name: "gradient.end", label: "Koniec (%)", selector: { number: { min: 0, max: 100, step: 1 } } },
+      ]);
     }
 
-    // --- Sekcja: Kolory wyników ---
-    const sColors = section("Kolory wyników");
-    const schemaColors = [
-      { name: "colors.win",  label: "Wygrana", selector: { color: {} } },
-      { name: "colors.draw", label: "Remis",   selector: { color: {} } },
-      { name: "colors.loss", label: "Porażka", selector: { color: {} } },
-    ];
-    sColors.appendChild(this._makeForm(schemaColors));
+    // natywne pickery kolorów
+    this._root.appendChild(this._header("🟥 Kolory wyników"));
+    ["win", "draw", "loss"].forEach((key) => {
+      const label =
+        key === "win" ? "Wygrana (W)" :
+        key === "draw" ? "Remis (R)" :
+        "Porażka (P)";
+      const wrap = document.createElement("div");
+      wrap.style.display = "flex";
+      wrap.style.alignItems = "center";
+      wrap.style.justifyContent = "space-between";
+      wrap.style.marginBottom = "8px";
+      const lbl = document.createElement("label");
+      lbl.textContent = label;
+      lbl.style.flex = "1";
+      const input = document.createElement("input");
+      input.type = "color";
+      input.value = this._flat[`colors.${key}`] || "#000000";
+      input.style.flex = "0 0 60px";
+      input.addEventListener("input", (ev) => {
+        this._flat[`colors.${key}`] = ev.target.value;
+        const nested = this._unflatten(this._flat);
+        this._config = this._mergeDeep(this._config, nested);
+        this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+      });
+      wrap.append(lbl, input);
+      this._root.appendChild(wrap);
+    });
 
-    // --- Sekcja: Rozmiary czcionek ---
-    const sFonts = section("Rozmiary czcionek (em)");
-    const schemaFonts = [
-      { name: "font_size.date",   label: "Data",   selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
-      { name: "font_size.status", label: "Status", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
-      { name: "font_size.teams",  label: "Zespoły",selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
-      { name: "font_size.score",  label: "Wynik",  selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
-    ];
-    sFonts.appendChild(this._makeForm(schemaFonts));
+    sec("🔠 Czcionki (em)", [
+      { name: "font_size.date", label: "Data", selector: { number: { min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.status", label: "Status", selector: { number: { min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.teams", label: "Zespoły", selector: { number: { min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.score", label: "Wynik", selector: { number: { min: 0.5, max: 3, step: 0.1 } } },
+    ]);
 
-    // --- Sekcja: Rozmiary ikon ---
-    const sIcons = section("Rozmiary ikon (px)");
-    const schemaIcons = [
-      { name: "icon_size.league", label: "Liga",   selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
-      { name: "icon_size.crest",  label: "Herb",   selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
-      { name: "icon_size.result", label: "Symbol", selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
-    ];
-    sIcons.appendChild(this._makeForm(schemaIcons));
+    sec("🧿 Ikony (px)", [
+      { name: "icon_size.league", label: "Liga", selector: { number: { min: 8, max: 128, step: 1 } } },
+      { name: "icon_size.crest", label: "Herb", selector: { number: { min: 8, max: 128, step: 1 } } },
+      { name: "icon_size.result", label: "Symbol", selector: { number: { min: 8, max: 128, step: 1 } } },
+    ]);
 
-    // --- Sekcja: Układ kolumn ---
-    const sCols = section("Układ kolumn (%)");
-    const schemaCols = [
-      { name: "columns_pct.date",   label: "Data",   selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
-      { name: "columns_pct.league", label: "Liga",   selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
-      { name: "columns_pct.crest",  label: "Herby",  selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
-      { name: "columns_pct.score",  label: "Wynik",  selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
-      { name: "columns_pct.result", label: "Symbol", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
-    ];
-    sCols.appendChild(this._makeForm(schemaCols));
+    sec("📐 Układ kolumn (%)", [
+      { name: "columns_pct.date", label: "Data", selector: { number: { min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.league", label: "Liga", selector: { number: { min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.crest", label: "Herby", selector: { number: { min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.score", label: "Wynik", selector: { number: { min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.result", label: "Symbol", selector: { number: { min: 0, max: 50, step: 1 } } },
+    ]);
 
-    // --- Reset ---
-    const resetWrap = document.createElement("div");
-    resetWrap.style.textAlign = "right";
-    resetWrap.style.marginTop = "8px";
     const btn = document.createElement("mwc-button");
     btn.label = "🔄 Przywróć domyślne";
     btn.addEventListener("click", () => {
       const def = this._defaults();
-      // zachowaj entity z bieżącej konfiguracji
       if (this._config.entity) def.entity = this._config.entity;
       this._config = this._mergeDeep({}, def);
       this._flat = this._flatten(this._config);
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
       this._render();
     });
-    this._root.appendChild(resetWrap);
-    resetWrap.appendChild(btn);
+    this._root.appendChild(btn);
+  }
+
+  _header(text) {
+    const h = document.createElement("h4");
+    h.textContent = text;
+    return h;
   }
 
   _makeForm(schema) {
     const form = document.createElement("ha-form");
     form.hass = this._hass;
-    form.data = this._flat;   // spłaszczone dane (klucze z kropkami)
+    form.data = this._flat;
     form.schema = schema;
     form.addEventListener("value-changed", (ev) => {
-      // ha-form zwraca całą płaską mapę (dla tego formularza)
-      const partialFlat = ev.detail.value || {};
-      // uaktualnij _flat tylko o zmienione klucze
-      Object.assign(this._flat, partialFlat);
-      // odbuduj strukturę zagnieżdżoną
+      const partial = ev.detail.value || {};
+      Object.assign(this._flat, partial);
       const nested = this._unflatten(this._flat);
-      // scal z istniejącą konfiguracją (aby nie gubić pól)
       this._config = this._mergeDeep(this._config, nested);
-      // emituj do karty
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
 
-      // jeżeli zmieniono fill_mode, prze-renderuj sekcje (pokaz/ukryj gradient)
-      if (Object.prototype.hasOwnProperty.call(partialFlat, "fill_mode")) {
-        this._render();
-      }
+      // 🔹 Opóźnione odświeżenie, żeby nie zrywać focusa
+      clearTimeout(this._renderTimer);
+      this._renderTimer = setTimeout(() => {
+        if (Object.keys(partial).some((k) => k.startsWith("columns_pct."))) {
+          this._render();
+        }
+      }, 400);
     });
     this._forms.push(form);
     return form;
   }
 
-  get value() {
-    return this._config;
-  }
-
-  // ---------- UTIL: flatten / unflatten / merge ----------
   _flatten(obj, prefix = "", res = {}) {
     Object.entries(obj || {}).forEach(([k, v]) => {
       const key = prefix ? `${prefix}.${k}` : k;
-      if (v && typeof v === "object" && !Array.isArray(v)) {
-        this._flatten(v, key, res);
-      } else {
-        res[key] = v;
-      }
+      if (v && typeof v === "object" && !Array.isArray(v)) this._flatten(v, key, res);
+      else res[key] = v;
     });
     return res;
   }
@@ -221,11 +207,8 @@ class MatchesCardEditor extends HTMLElement {
   _mergeDeep(target, source) {
     const out = Array.isArray(target) ? [...target] : { ...(target || {}) };
     Object.entries(source || {}).forEach(([key, value]) => {
-      if (value && typeof value === "object" && !Array.isArray(value)) {
-        out[key] = this._mergeDeep(out[key] || {}, value);
-      } else {
-        out[key] = value;
-      }
+      if (value && typeof value === "object" && !Array.isArray(value)) out[key] = this._mergeDeep(out[key] || {}, value);
+      else out[key] = value;
     });
     return out;
   }

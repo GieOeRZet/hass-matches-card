@@ -1,11 +1,11 @@
 {
   "name": "Matches Card",
-  "version": "0.3.017",
+  "version": "0.3.018",
   "type": "module",
   "resources": [
     {
       "type": "module",
-      "url": "hacsfiles/matches-card/matches-card.js"
+      "url": "hacsfiles/matches-card/card/matches-card.js"
     }
   ],
   "render_readme": true

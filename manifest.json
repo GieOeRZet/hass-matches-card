@@ -1,0 +1,14 @@
+{
+  "domain": "matches-card",
+  "name": "Matches Card",
+  "version": "0.3.010",
+  "type": "module",
+  "resources": [
+    {
+      "type": "module",
+      "url": "local/community/matches-card/matches-card.js"
+    }
+  ],
+  "description": "Custom Lovelace card to display football match results, league tables, and live data from 90minut.pl or other sources.",
+  "render_readme": true
+}

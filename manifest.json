@@ -1,7 +1,7 @@
 {
   "domain": "matches-card",
   "name": "Matches Card",
-  "version": "0.3.010",
+  "version": "0.3.015",
   "type": "module",
   "resources": [
     {

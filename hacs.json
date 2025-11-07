@@ -1,10 +1,6 @@
 {
-  "name": "Matches Card (90minut)",
+  "name": "Matches Card",
   "filename": "matches-card.js",
-  "render_readme": true,
-  "hide_default_branch": true,
-  "country": "PL",
-  "homeassistant": "2024.6.0",
-  "persistent_directory": "www/community/matches-card",
-  "content_in_root": true
+  "content_in_root": true,
+  "render_readme": true
 }

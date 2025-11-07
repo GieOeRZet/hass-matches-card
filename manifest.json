@@ -6,7 +6,7 @@
   "resources": [
     {
       "type": "module",
-      "url": "local/community/matches-card/matches-card.js"
+      "url": "hacsfiles/matches-card/matches-card.js"
     }
   ],
   "description": "Custom Lovelace card to display football match results, league tables, and live data from 90minut.pl or other sources.",

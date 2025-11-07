@@ -1,81 +1,65 @@
-name: 🧩 Build & Release Matches Card
+name: 🚀 Build and Release Matches Card
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Numer wersji (np. 0.3.013)"
+        description: "Numer wersji (np. 0.3.010)"
         required: true
-        default: "0.3.013"
+  push:
+    tags:
+      - '*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ github.event.inputs.version }}
-      CLEAN_VERSION: ${{ github.event.inputs.version }}
+      VERSION: ${{ github.event.inputs.version || github.ref_name }}
 
     steps:
-      - name: 🛠️ Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v3
 
-      - name: 🧮 Update version in manifests
+      - name: 🧾 Update manifest.json version
         run: |
+          echo "Updating version to ${VERSION}"
           sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" manifest.json
-          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" hacs.json || true
-          echo "✅ Updated version to ${VERSION}"
 
-      - name: 🧹 Clean dist directory
-        run: rm -rf dist && mkdir -p dist
-
-      - name: 📦 Create release ZIP (flat structure for HACS)
+      - name: 🧱 Prepare temporary dist folder
         run: |
-          zip -r dist/matches-card-${VERSION}.zip \
-            matches-card.js \
-            matches-card-editor.js \
-            manifest.json \
-            hacs.json \
-            README.md \
-            logo
-          echo "✅ ZIP created: dist/matches-card-${VERSION}.zip"
+          mkdir -p dist
+          cp -r logo translations manifest.json hacs.json matches-card.js matches-card-editor.js README.md dist/
+
+      - name: 📦 Create ZIP package
+        run: |
+          cd dist
+          zip -r matches-card-${VERSION}.zip .
+          ls -lh matches-card-${VERSION}.zip
 
       - name: 🏷️ Commit and tag version
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add manifest.json hacs.json
-          git commit -m "Release ${VERSION}" || echo "No changes to commit"
-          git tag -fa "${VERSION}" -m "Automated release ${VERSION}"
+          git commit -m "Bump version to ${VERSION}" || echo "No changes to commit"
+          git tag -fa "${VERSION}" -m "Matches Card ${VERSION}"
           git push origin "${VERSION}" --force
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git push
 
-      - name: 🚀 Create GitHub release
+      - name: 🚀 Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.VERSION }}
           name: Matches Card ${{ env.VERSION }}
           body: |
-            Automatycznie zbudowana wersja karty gotowa do instalacji przez HACS.
+            Automatyczna kompilacja karty gotowa do instalacji przez HACS.
 
-            🔄 Zmiany:
-            - płaska struktura ZIP (HACS auto-rozpakowanie)
-            - content_in_root: true
-            - automatyczna aktualizacja wersji
-            - zgodność z HACS 2024+
+            ✅ Zmiany:
+            - wersja: ${{ env.VERSION }}
+            - pliki w głównym katalogu ZIP-a (`content_in_root: true`)
+            - pełna zgodność z Home Assistant i HACS
           draft: false
           prerelease: false
           files: ./dist/matches-card-${{ env.VERSION }}.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 🧹 Clean old beta releases (optional)
-        if: always()
-        run: |
-          echo "🧽 Cleaning old beta releases..."
-          gh release list --limit 50 | grep "beta" | awk '{print $1}' | xargs -r -n1 gh release delete -y || true
-          gh release list --limit 50 | grep "beta" | awk '{print $1}' | xargs -r -n1 gh tag delete || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

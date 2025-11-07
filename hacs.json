@@ -1,5 +1,6 @@
 {
   "name": "Matches Card",
+  "filename": "card/matches-card.js",
   "content_in_root": true,
   "render_readme": true
 }

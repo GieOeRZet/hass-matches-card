@@ -1,12 +1,13 @@
 {
   "name": "Matches Card",
-  "version": "0.3.001",
+  "description": "Custom Lovelace card to display football match data with logos, colors, and live indicator.",
+  "version": "0.3.041",
   "type": "module",
+  "render_readme": true,
   "resources": [
     {
       "type": "module",
       "url": "hacsfiles/matches-card/matches-card.js"
     }
-  ],
-  "render_readme": true
+  ]
 }

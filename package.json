@@ -1,29 +1,15 @@
 {
-  "type": "module",
   "name": "matches-card",
-  "version": "0.3.039",
-  "description": "Football Matches Card for Home Assistant Lovelace UI",
-  "keywords": [
-    "home-assistant",
-    "homeassistant",
-    "lovelace",
-    "custom-cards",
-    "matches"
-  ],
+  "version": "0.3.040",
+  "description": "Custom Lovelace card for displaying match data (Górnik Zabrze edition)",
+  "type": "module",
   "scripts": {
     "build": "rollup -c"
-  },
-  "dependencies": {
-    "lit": "^2.8.0"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.2.0",
     "@rollup/plugin-terser": "^0.4.4",
-    "@rollup/plugin-image": "^3.0.0",
     "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-commonjs": "^25.0.8",
     "rollup": "^3.29.4"
-  },
-  "author": "GieOeRZet",
-  "license": "MIT"
+  }
 }

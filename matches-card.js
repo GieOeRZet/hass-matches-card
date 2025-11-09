@@ -1,255 +1,176 @@
-// --- Importy ---
-import { LitElement, html, css, nothing } from "lit";
-import "./matches-card-editor.js"; // 👈 edytor wbudowany w bundle
+// ============================================================================
+//  Matches Card (90minut) – v0.3.001 (revived from 0.2.011)
+//  Autor: GieOeRZet
+// ============================================================================
 
-// --- Domyślna konfiguracja ---
-const defaultConfig = {
-  title: "Matches",
-  show_logos: true,
-  show_league: true,
-  max_rows: 12,
-  bg_color: "#1e1e1e",
-  bg_alpha: 0.95,
-  text_color: "#ffffff",
-  accent_color: "#03a9f4",
-  name_col_width: 60,
-  score_col_width: 15,
-  meta_col_width: 15,
-  logo_col_width: 10,
-  matches: [
-    {
-      team_home: "Górnik Zabrze",
-      team_away: "Ruch Chorzów",
-      result: "2:1",
-      date: "2025-11-09 18:00",
-      league: "Ekstraklasa",
-      live: false
-    }
-  ]
-};
-
-// --- Fallback logo: lokalnie → GitHub ---
-function resolveLogo(name) {
-  if (!name) return "";
-  const key = name.toLowerCase().replace(/[^a-z0-9]/g, "_");
-  const local = `/hacsfiles/matches-card/logo/${key}.png`;
-  const remote = `https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/${key}.png`;
-  const img = new Image();
-  img.src = local;
-  img.onerror = () => (img.src = remote);
-  return img.src;
-}
-
-// --- Główna klasa karty ---
-class MatchesCard extends LitElement {
-  static properties = {
-    hass: {},
-    _config: { attribute: false }
-  };
-
-  static getConfigElement() {
-    return document.createElement("matches-card-editor");
-  }
-
-  static getStubConfig() {
-    return { ...defaultConfig };
-  }
-
+class MatchesCard extends HTMLElement {
   setConfig(config) {
-    this._config = { ...defaultConfig, ...config };
+    if (!config.entity)
+      throw new Error("Entity is required (np. sensor.90minut_gornik_zabrze_matches)");
+
+    this.config = {
+      name: "90minut Matches",
+      show_name: true,
+      show_logos: true,
+      full_team_names: true,
+      show_result_symbols: true,
+      fill_mode: "gradient",
+
+      font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
+      icon_size: { league: 26, crest: 24, result: 26 },
+      gradient: { alpha: 0.5, start: 35, end: 100 },
+      columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
+      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
+
+      ...config
+    };
   }
 
-  getCardSize() {
-    const count = Math.min(
-      this._config?.matches?.length || 1,
-      this._config?.max_rows || defaultConfig.max_rows
-    );
-    return 1 + Math.max(1, Math.floor(0.7 * count));
-  }
+  set hass(hass) {
+    this._hass = hass;
+    const entity = this.config.entity;
+    const stateObj = hass.states[entity];
+    if (!stateObj) return;
+    const matches = stateObj.attributes.matches || [];
 
-  render() {
-    if (!this._config) return nothing;
-    const c = this._config;
+    const zebraCSS =
+      this.config.fill_mode === "zebra"
+        ? `tr:nth-child(even){background-color:rgba(240,240,240,0.4);}`
+        : "";
 
-    const bg = this.hexToRgba(c.bg_color, c.bg_alpha);
-    const text = c.text_color || defaultConfig.text_color;
-    const accent = c.accent_color || defaultConfig.accent_color;
+    const style = `
+      <style>
+        ha-card {
+          padding: 10px 0;
+          font-family: "Sofascore Sans", Arial, sans-serif;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        td { text-align:center; vertical-align:middle; padding:4px 6px; }
+        tr { border-bottom:1px solid rgba(0,0,0,0.1); }
+        .dual-cell{display:flex;flex-direction:column;justify-content:center;align-items:center;}
+        .team-cell{text-align:left;padding-left:8px;}
+        .team-row{display:flex;align-items:center;justify-content:flex-start;line-height:1.3em;}
+        .bold{font-weight:600;}
+        .dim{opacity:0.8;}
+        .result-circle{
+          border-radius:50%;
+          width:${this.config.icon_size.result}px;
+          height:${this.config.icon_size.result}px;
+          color:white;display:flex;justify-content:center;align-items:center;
+          font-weight:bold;margin:0 auto;
+        }
+        ${zebraCSS}
+      </style>
+    `;
 
-    const grid = [
-      c.show_logos ? `${c.logo_col_width}%` : null,
-      `${c.name_col_width}%`,
-      `${c.score_col_width}%`,
-      `${c.meta_col_width}%`
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const rows = matches
+      .map((match) => {
+        const rawDate = match.date ? match.date.replace(" ", "T") : null;
+        const dateObj = rawDate ? new Date(rawDate) : null;
+        const dateStr = dateObj
+          ? dateObj.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" })
+          : "-";
+        const timeStr = match.finished
+          ? "KONIEC"
+          : dateObj
+          ? dateObj.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
+          : "";
 
-    const rows = Array.isArray(c.matches) ? c.matches : [];
+        const resultClass =
+          match.result === "win"
+            ? "row-win"
+            : match.result === "loss"
+            ? "row-loss"
+            : match.result === "draw"
+            ? "row-draw"
+            : "";
 
-    return html`
-      <ha-card style="--mc-bg:${bg};--mc-fg:${text};--mc-accent:${accent};">
-        <div class="header">
-          <div class="title">${c.title || defaultConfig.title}</div>
-        </div>
-        <div class="table">
-          ${rows.length === 0
-            ? html`<div class="empty">Brak meczów</div>`
-            : rows.slice(0, c.max_rows).map((m, i) => this.renderRow(m, i, grid))}
-        </div>
+        const homeBold = match.result === "win" ? "bold" : match.result === "loss" ? "dim" : "";
+        const awayBold = match.result === "loss" ? "bold" : match.result === "win" ? "dim" : "";
+
+        const [homeScore, awayScore] = (match.score || "-").split("-");
+
+        // Liga (lokalna → GitHub fallback)
+        let leagueIcon = null;
+        if (match.league === "L" || match.league === "PP") {
+          const file = match.league === "L" ? "ekstraklasa.png" : "puchar.png";
+          const localPath = `/hacsfiles/matches-card/logo/${file}`;
+          const remotePath = `https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/${file}`;
+          const img = new Image();
+          img.src = localPath;
+          img.onerror = () => (img.src = remotePath);
+          leagueIcon = img.src;
+        }
+
+        const homeTeam = this.config.full_team_names ? match.home : match.home.split(" ")[0];
+        const awayTeam = this.config.full_team_names ? match.away : match.away.split(" ")[0];
+
+        const gradientCSS =
+          this.config.fill_mode === "gradient" && match.result
+            ? `background: linear-gradient(to right,
+                rgba(0,0,0,0) ${this.config.gradient.start}%,
+                ${this.config.colors[match.result]}${Math.round(this.config.gradient.alpha * 255)
+                .toString(16)} 100%);`
+            : "";
+
+        return `
+          <tr class="${resultClass}" style="${gradientCSS}">
+            <td style="width:${this.config.columns_pct.date}%;">
+              <div style="font-size:${this.config.font_size.date}em;">${dateStr}</div>
+              <div style="font-size:${this.config.font_size.status}em;">${timeStr}</div>
+            </td>
+            <td style="width:${this.config.columns_pct.league}%;">
+              ${
+                leagueIcon
+                  ? `<img src="${leagueIcon}" height="${this.config.icon_size.league}" style="display:block;margin:auto;" />`
+                  : `<div style="font-size:0.9em;opacity:0.8;">${match.league}</div>`
+              }
+            </td>
+            ${
+              this.config.show_logos
+                ? `<td class="dual-cell" style="width:${this.config.columns_pct.crest}%;">
+                     <div><img src="${match.logo_home}" height="${this.config.icon_size.crest}" style="background:white;border-radius:6px;padding:2px;" /></div>
+                     <div><img src="${match.logo_away}" height="${this.config.icon_size.crest}" style="background:white;border-radius:6px;padding:2px;" /></div>
+                   </td>`
+                : ""
+            }
+            <td class="team-cell">
+              <div class="team-row ${homeBold}" style="font-size:${this.config.font_size.teams}em;">${homeTeam}</div>
+              <div class="team-row ${awayBold}" style="font-size:${this.config.font_size.teams}em;">${awayTeam}</div>
+            </td>
+            <td class="dual-cell" style="width:${this.config.columns_pct.score}%;">
+              <div class="${homeBold}" style="font-size:${this.config.font_size.score}em;">${homeScore}</div>
+              <div class="${awayBold}" style="font-size:${this.config.font_size.score}em;">${awayScore}</div>
+            </td>
+            <td class="result-cell" style="width:${this.config.columns_pct.result}%;">
+              ${
+                this.config.show_result_symbols && match.result
+                  ? `<div class="result-circle" style="background-color:${this.config.colors[match.result]}">${match.result.charAt(0).toUpperCase()}</div>`
+                  : ""
+              }
+            </td>
+          </tr>`;
+      })
+      .join("");
+
+    const cardName = this.config.show_name === false ? "" :
+      this.config.name || stateObj.attributes.friendly_name || "90minut Matches";
+
+    this.innerHTML = `
+      ${style}
+      <ha-card ${cardName ? `header="${cardName}"` : ""}>
+        <table>${rows}</table>
       </ha-card>
     `;
   }
 
-  renderRow(m, i, grid) {
-    const live =
-      (m.status || "").toString().toUpperCase().includes("LIVE") || m.live === true;
-    const home = m.team_home || m.home || "";
-    const away = m.team_away || m.away || "";
-    const result =
-      m.result ??
-      (m.home_score != null && m.away_score != null
-        ? `${m.home_score}:${m.away_score}`
-        : "-");
-    const date = m.date || m.when || "";
-    const league = m.league || "";
-
-    const logoHome = this._config.show_logos ? resolveLogo(home) : "";
-    const logoAway = this._config.show_logos ? resolveLogo(away) : "";
-
-    return html`
-      <div class="row ${live ? "live" : ""}" style="grid-template-columns:${grid};">
-        ${this._config.show_logos
-          ? html`
-              <div class="cell logos">
-                ${logoHome
-                  ? html`<img src="${logoHome}" alt="${home}" />`
-                  : html`<div class="fallback">${league}</div>`}
-                ${logoAway
-                  ? html`<img src="${logoAway}" alt="${away}" />`
-                  : html`<div class="fallback">${league}</div>`}
-              </div>
-            `
-          : nothing}
-
-        <div class="cell teams" title="${home} vs ${away}">
-          ${live ? html`<span class="live-dot"></span>` : nothing}
-          <span class="team">${home}</span>
-          <span class="vs">vs</span>
-          <span class="team">${away}</span>
-        </div>
-
-        <div class="cell score">${result}</div>
-        <div class="cell meta">
-          ${date}${this._config.show_league && league ? ` • ${league}` : ""}
-        </div>
-      </div>
-    `;
-  }
-
-  hexToRgba(hex, alpha = 1) {
-    if (!hex) return "rgba(30,30,30,0.9)";
-    let c = hex.replace("#", "");
-    if (c.length === 3) c = [...c].map((x) => x + x).join("");
-    const i = parseInt(c, 16);
-    return `rgba(${(i >> 16) & 255}, ${(i >> 8) & 255}, ${i & 255}, ${alpha})`;
-  }
-
-  static styles = css`
-    :host {
-      --mc-bg: #1e1e1e;
-      --mc-fg: #fff;
-      --mc-accent: #03a9f4;
-    }
-    ha-card {
-      background: var(--mc-bg);
-      color: var(--mc-fg);
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    .header {
-      padding: 10px 14px;
-      font-weight: 700;
-    }
-    .table {
-      display: grid;
-      gap: 8px;
-      padding: 10px 14px 14px;
-    }
-    .row {
-      display: grid;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.05);
-    }
-    .row.live {
-      outline: 2px solid var(--mc-accent);
-    }
-    .cell {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-    }
-    .logos img {
-      width: 26px;
-      height: 26px;
-      border-radius: 6px;
-      object-fit: contain;
-      background: rgba(255, 255, 255, 0.12);
-      padding: 2px;
-    }
-    .fallback {
-      font-size: 0.75em;
-      opacity: 0.7;
-      font-weight: 600;
-    }
-    .teams .team {
-      font-weight: 600;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .vs {
-      opacity: 0.6;
-      margin: 0 6px;
-    }
-    .score {
-      justify-content: center;
-      font-weight: 800;
-    }
-    .meta {
-      justify-content: flex-end;
-      opacity: 0.85;
-      font-variant-numeric: tabular-nums;
-    }
-    .live-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--mc-accent);
-      animation: pulse 1.2s infinite ease-in-out;
-    }
-    @keyframes pulse {
-      0% {
-        transform: scale(0.9);
-        opacity: 0.7;
-      }
-      50% {
-        transform: scale(1.15);
-        opacity: 1;
-      }
-      100% {
-        transform: scale(0.9);
-        opacity: 0.7;
-      }
-    }
-  `;
+  getCardSize() { return 6; }
 }
 
-// --- Bezpieczna rejestracja komponentu ---
-if (!customElements.get("matches-card")) {
-  customElements.define("matches-card", MatchesCard);
-}
+customElements.define("matches-card", MatchesCard);
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "matches-card",
+  name: "Matches Card (90minut)",
+  description: "Karta pokazująca mecze z sensora 90minut.pl"
+});

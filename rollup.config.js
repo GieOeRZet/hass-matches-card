@@ -1,4 +1,5 @@
 import resolve from "@rollup/plugin-node-resolve";
+import commonjs from "@rollup/plugin-commonjs";
 import terser from "@rollup/plugin-terser";
 import image from "@rollup/plugin-image";
 import json from "@rollup/plugin-json";
@@ -8,18 +9,17 @@ export default {
   output: {
     file: "matches-card.js",
     format: "es",
+    inlineDynamicImports: true
   },
   plugins: [
     resolve({
       browser: true,
       preferBuiltins: false,
-      exportConditions: ["default", "module", "import"],
-      dedupe: ["lit", "lit-html", "lit-element"] // 👈 traktuj lit jako lokalny
+      dedupe: ["lit", "lit-html", "lit-element"]
     }),
+    commonjs(),
     image(),
     json(),
     terser()
-  ],
-  // nie wykluczaj niczego z bundla
-  external: id => false,
+  ]
 };

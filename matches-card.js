@@ -1,16 +1,18 @@
 // ============================================================================
-//  Matches Card (90minut) – v0.3.100 Stable Rebuild
-//  Autor: GieOeRZet
-//  Repo:  https://github.com/GieOeRZet/matches-card
+//  Matches Card (90minut) – v0.3.501
+//  Author: GieOeRZet
+//  Description: Enhanced match card for HA with gradient/zebra modes,
+//               automatic translation (PL/EN), light mode, compact layout.
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
-  setConfig(config) {
-    if (!config || !config.entity) {
-      throw new Error("Entity is required (np. sensor.90minut_gornik_zabrze_matches)");
-    }
+  static getConfigElement() {
+    return document.createElement("matches-card-editor");
+  }
 
-    this.config = {
+  static getStubConfig() {
+    return {
+      entity: "sensor.90minut_gornik_zabrze_matches",
       name: "90minut Matches",
       show_name: true,
       show_logos: true,
@@ -18,13 +20,23 @@ class MatchesCard extends HTMLElement {
       show_result_symbols: true,
       fill_mode: "gradient",
       theme_mode: "auto",
+      light_mode: false,
       font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
       icon_size: { league: 26, crest: 24, result: 26 },
       gradient: { alpha: 0.5, start: 35, end: 100 },
+      zebra_color: "#f0f0f0",
       columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
       colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
-      ...config,
     };
+  }
+
+  async setConfig(config) {
+    this.config = { ...MatchesCard.getStubConfig(), ...config };
+    if (!customElements.get("matches-card-editor")) {
+      await import("./matches-card-editor.js").catch((e) =>
+        console.warn("Editor import failed:", e)
+      );
+    }
   }
 
   set hass(hass) {
@@ -34,15 +46,19 @@ class MatchesCard extends HTMLElement {
     if (!stateObj) return;
 
     const matches = stateObj.attributes.matches || [];
-
     const darkMode =
       this.config.theme_mode === "dark" ||
       (this.config.theme_mode === "auto" &&
         window.matchMedia &&
         window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-    const rowSep = darkMode ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.1)";
-    const zebraBg = darkMode ? "rgba(255,255,255,0.06)" : "rgba(240,240,240,0.4)";
+    const rowSep = darkMode
+      ? "rgba(255,255,255,0.14)"
+      : "rgba(0,0,0,0.1)";
+
+    const zebraBg =
+      this.config.zebra_color ||
+      (darkMode ? "rgba(255,255,255,0.06)" : "rgba(240,240,240,0.4)");
 
     const zebraCSS =
       this.config.fill_mode === "zebra"
@@ -52,15 +68,19 @@ class MatchesCard extends HTMLElement {
     const style = `
       <style>
         ha-card {
-          padding: 12px 6px;
+          padding: ${this.config.light_mode ? "0" : "12px 6px"};
           font-family: "Sofascore Sans", Arial, sans-serif;
-          background: var(--card-background-color);
+          background: ${
+            this.config.light_mode
+              ? "transparent"
+              : "var(--card-background-color)"
+          };
         }
         table { width: 100%; border-collapse: collapse; }
         td {
           text-align: center;
           vertical-align: middle;
-          padding: 4px 6px;
+          padding: 2px 4px;
         }
         tr { border-bottom: 1px solid ${rowSep}; }
         .dual-cell {
@@ -72,13 +92,12 @@ class MatchesCard extends HTMLElement {
         .team-cell {
           text-align: left;
           vertical-align: middle;
-          padding-left: 8px;
+          padding-left: 6px;
         }
         .team-row {
           display: flex;
           align-items: center;
-          justify-content: flex-start;
-          line-height: 1.3em;
+          line-height: 1.2em;
         }
         .bold { font-weight: 600; }
         .dim { opacity: 0.8; }
@@ -93,6 +112,15 @@ class MatchesCard extends HTMLElement {
           font-weight: bold;
           margin: 0 auto;
         }
+        img.crest {
+          width: ${this.config.icon_size.crest}px;
+          height: ${this.config.icon_size.crest}px;
+          object-fit: contain;
+          aspect-ratio: 1 / 1;
+          background: white;
+          border-radius: 4px;
+          padding: 2px;
+        }
         ${zebraCSS}
       </style>
     `;
@@ -102,12 +130,19 @@ class MatchesCard extends HTMLElement {
         const rawDate = match.date ? match.date.replace(" ", "T") : null;
         const dateObj = rawDate ? new Date(rawDate) : null;
         const dateStr = dateObj
-          ? dateObj.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" })
+          ? dateObj.toLocaleDateString("pl-PL", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
           : "-";
         const timeStr = match.finished
           ? "KONIEC"
           : dateObj
-          ? dateObj.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
+          ? dateObj.toLocaleTimeString("pl-PL", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
           : "";
 
         const resultClass =
@@ -119,12 +154,21 @@ class MatchesCard extends HTMLElement {
             ? "row-draw"
             : "";
 
-        const homeBold = match.result === "win" ? "bold" : match.result === "loss" ? "dim" : "";
-        const awayBold = match.result === "loss" ? "bold" : match.result === "win" ? "dim" : "";
+        const homeBold =
+          match.result === "win"
+            ? "bold"
+            : match.result === "loss"
+            ? "dim"
+            : "";
+        const awayBold =
+          match.result === "loss"
+            ? "bold"
+            : match.result === "win"
+            ? "dim"
+            : "";
 
         const [homeScore, awayScore] = (match.score || "-").split("-");
 
-        // --- 🔹 Logotypy lig z GitHuba (raw.githubusercontent.com)
         const leagueIcon =
           match.league === "L"
             ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/ekstraklasa.png"
@@ -132,54 +176,66 @@ class MatchesCard extends HTMLElement {
             ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/puchar.png"
             : null;
 
-        const homeTeam = this.config.full_team_names ? match.home || "" : (match.home || "").split(" ")[0] || "";
-        const awayTeam = this.config.full_team_names ? match.away || "" : (match.away || "").split(" ")[0] || "";
+        const homeTeam = this.config.full_team_names
+          ? match.home || ""
+          : (match.home || "").split(" ")[0] || "";
+        const awayTeam = this.config.full_team_names
+          ? match.away || ""
+          : (match.away || "").split(" ")[0] || "";
 
-        const colorHex = this.config.colors?.[match.result] || "#000000";
-        const rgbaColor = this.hexToRgba(colorHex, this.config.gradient.alpha);
+        const colorHex =
+          this.config.colors && match.result
+            ? this.config.colors[match.result]
+            : "#000000";
+
+        const rgbaColor = this.hexToRgba(
+          colorHex,
+          this.config.gradient.alpha
+        );
 
         const gradientCSS =
           this.config.fill_mode === "gradient" && match.result
             ? `background: linear-gradient(to right, rgba(0,0,0,0) ${this.config.gradient.start}%, ${rgbaColor} ${this.config.gradient.end}%);`
             : "";
 
+        const col = this.config.columns_pct;
+        const visibleCols = Object.values(col).filter((v) => v > 0);
+        const totalUsed = visibleCols.reduce((a, b) => a + b, 0);
+        const teamWidth = 100 - totalUsed;
+
         return `
           <tr class="${resultClass}" style="${gradientCSS}">
-            <td style="width:${this.config.columns_pct.date}%;">
-              <div style="font-size:${this.config.font_size.date}em;">${dateStr}</div>
-              <div style="font-size:${this.config.font_size.status}em;">${timeStr}</div>
-            </td>
-            <td style="width:${this.config.columns_pct.league}%;">
-              ${
-                leagueIcon
+            ${col.date > 0 ? `
+              <td style="width:${col.date}%;">
+                <div style="font-size:${this.config.font_size.date}em;">${dateStr}</div>
+                <div style="font-size:${this.config.font_size.status}em;">${timeStr}</div>
+              </td>` : ""}
+            ${col.league > 0 ? `
+              <td style="width:${col.league}%;">
+                ${leagueIcon
                   ? `<img src="${leagueIcon}" height="${this.config.icon_size.league}" style="display:block;margin:auto;" />`
-                  : `<div style="font-size:0.9em;opacity:0.8;">${match.league ?? ""}</div>`
-              }
-            </td>
-            ${
-              this.config.show_logos
-                ? `
-              <td class="dual-cell" style="width:${this.config.columns_pct.crest}%;">
-                <div><img src="${match.logo_home || ""}" height="${this.config.icon_size.crest}" style="background:white;border-radius:6px;padding:2px;" /></div>
-                <div><img src="${match.logo_away || ""}" height="${this.config.icon_size.crest}" style="background:white;border-radius:6px;padding:2px;" /></div>
-              </td>`
-                : ""
-            }
-            <td class="team-cell">
+                  : `<div style="font-size:0.9em;opacity:0.8;">${match.league ?? ""}</div>`}
+              </td>` : ""}
+            ${this.config.show_logos && col.crest > 0 ? `
+              <td class="dual-cell" style="width:${col.crest}%;">
+                <div><img class="crest" src="${match.logo_home || ""}" /></div>
+                <div><img class="crest" src="${match.logo_away || ""}" /></div>
+              </td>` : ""}
+            <td class="team-cell" style="width:${teamWidth}%;">
               <div class="team-row ${homeBold}" style="font-size:${this.config.font_size.teams}em;">${homeTeam}</div>
               <div class="team-row ${awayBold}" style="font-size:${this.config.font_size.teams}em;">${awayTeam}</div>
             </td>
-            <td class="dual-cell" style="width:${this.config.columns_pct.score}%;">
-              <div class="${homeBold}" style="font-size:${this.config.font_size.score}em;">${homeScore ?? ""}</div>
-              <div class="${awayBold}" style="font-size:${this.config.font_size.score}em;">${awayScore ?? ""}</div>
-            </td>
-            <td class="result-cell" style="width:${this.config.columns_pct.result}%;">
-              ${
-                this.config.show_result_symbols && match.result
+            ${col.score > 0 ? `
+              <td class="dual-cell" style="width:${col.score}%;">
+                <div class="${homeBold}" style="font-size:${this.config.font_size.score}em;">${homeScore ?? ""}</div>
+                <div class="${awayBold}" style="font-size:${this.config.font_size.score}em;">${awayScore ?? ""}</div>
+              </td>` : ""}
+            ${col.result > 0 ? `
+              <td class="result-cell" style="width:${col.result}%;">
+                ${this.config.show_result_symbols && match.result
                   ? `<div class="result-circle" style="background-color:${colorHex}">${match.result.charAt(0).toUpperCase()}</div>`
-                  : ""
-              }
-            </td>
+                  : ""}
+              </td>` : ""}
           </tr>
         `;
       })
@@ -194,9 +250,11 @@ class MatchesCard extends HTMLElement {
 
     this.innerHTML = `
       ${style}
-      <ha-card ${cardName ? `header="${cardName}"` : ""}>
-        <table>${rows}</table>
-      </ha-card>
+      ${
+        this.config.light_mode
+          ? `<table>${rows}</table>`
+          : `<ha-card ${cardName ? `header="${cardName}"` : ""}><table>${rows}</table></ha-card>`
+      }
     `;
   }
 
@@ -215,28 +273,6 @@ class MatchesCard extends HTMLElement {
   getCardSize() {
     return 6;
   }
-
-  static getConfigElement() {
-    return document.createElement("matches-card-editor");
-  }
-
-  static getStubConfig() {
-    return {
-      entity: "sensor.90minut_gornik_zabrze_matches",
-      name: "90minut Matches",
-      show_name: true,
-      show_logos: true,
-      full_team_names: true,
-      show_result_symbols: true,
-      fill_mode: "gradient",
-      theme_mode: "auto",
-      font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
-      icon_size: { league: 26, crest: 24, result: 26 },
-      gradient: { alpha: 0.5, start: 35, end: 100 },
-      columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
-      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
-    };
-  }
 }
 
 customElements.define("matches-card", MatchesCard);
@@ -245,6 +281,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "matches-card",
   name: "Matches Card (90minut)",
-  description: "Karta pokazująca mecze z sensora 90minut.pl",
-  version: "0.3.100",
+  description:
+    "Match display card with gradient/zebra/clear fill modes, automatic PL/EN translation, and compact editor.",
+  version: "0.3.501",
 });

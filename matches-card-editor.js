@@ -1,12 +1,10 @@
 // ============================================================================
-//  Matches Card Editor – v0.3.501
+//  Matches Card Editor – v0.3.503
 //  Author: GieOeRZet
-//  Features:
-//   - Auto translation (PL/EN) based on HA language
-//   - Dynamic visibility for Gradient/Zebra sections
-//   - Compact layout (grid)
-//   - No scroll jumps on numeric inputs
-//   - Color pickers for result & zebra colors
+//  - Dynamic fill modes: gradient / zebra / clear
+//  - Full HA color pickers (RGB wheel)
+//  - Debounced value updates (no jumping)
+//  - Auto PL/EN translation
 // ============================================================================
 
 class MatchesCardEditor extends HTMLElement {
@@ -16,236 +14,218 @@ class MatchesCardEditor extends HTMLElement {
     this._flat = {};
   }
 
-  set hass(hass) {
-    this._hass = hass;
+  _defaults() {
+    return {
+      name: "90minut Matches",
+      show_name: true,
+      show_logos: true,
+      full_team_names: true,
+      show_result_symbols: true,
+      fill_mode: "gradient",
+      theme_mode: "auto",
+      light_mode: false,
+      font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
+      icon_size: { league: 26, crest: 24, result: 26 },
+      gradient: { alpha: 0.5, start: 35, end: 100 },
+      zebra_color: "",
+      columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
+      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
+    };
   }
 
   setConfig(config) {
-    this._config = JSON.parse(JSON.stringify(config || {}));
+    this._config = this._mergeDeep(this._defaults(), config || {});
     this._flat = this._flatten(this._config);
     this._render();
   }
 
-  // --- Language dictionary ---
-  _t(key) {
+  set hass(hass) {
+    this._hass = hass;
+    if (this._forms) this._forms.forEach((f) => (f.hass = hass));
+  }
+
+  _render() {
+    if (!this._root) {
+      this._root = document.createElement("div");
+      this._root.style.maxWidth = "520px";
+      this._root.style.margin = "0 auto";
+      this._root.style.padding = "8px";
+      this.appendChild(this._root);
+    }
+    this._root.innerHTML = "";
+    this._forms = [];
+
     const lang = (this._hass && this._hass.language) || "en";
-    const dict = {
+    const LANG = {
       en: {
         basic: "Basic",
         appearance: "Appearance",
         fill_mode: "Fill mode",
+        theme_mode: "Theme",
         gradient: "Gradient",
         zebra: "Zebra",
         clear: "Clear",
-        light_mode: "Light mode (no header)",
-        result_colors: "Result colors",
-        win_color: "Win color",
-        draw_color: "Draw color",
-        loss_color: "Loss color",
-        zebra_color: "Zebra color",
         alpha: "Transparency",
         start: "Start (%)",
         end: "End (%)",
+        zebra_color: "Zebra color",
+        win_color: "Win color",
+        draw_color: "Draw color",
+        loss_color: "Loss color",
         font_sizes: "Font sizes (em)",
         icon_sizes: "Icon sizes (px)",
         column_widths: "Column widths (%)",
+        light_mode: "Light mode (no header, no padding)",
         restore_defaults: "Restore defaults",
       },
       pl: {
         basic: "Podstawowe",
         appearance: "Wygląd",
         fill_mode: "Tryb wypełnienia",
+        theme_mode: "Motyw",
         gradient: "Gradient",
         zebra: "Zebra",
         clear: "Czysty",
-        light_mode: "Tryb lekki (bez nagłówka)",
-        result_colors: "Kolory wyników",
-        win_color: "Kolor wygranej",
-        draw_color: "Kolor remisu",
-        loss_color: "Kolor porażki",
-        zebra_color: "Kolor tła zebry",
         alpha: "Przezroczystość",
         start: "Początek (%)",
         end: "Koniec (%)",
+        zebra_color: "Kolor tła zebry",
+        win_color: "Kolor wygranej",
+        draw_color: "Kolor remisu",
+        loss_color: "Kolor porażki",
         font_sizes: "Wielkości czcionek (em)",
         icon_sizes: "Rozmiary ikon (px)",
         column_widths: "Szerokości kolumn (%)",
+        light_mode: "Tryb lekki (bez nagłówka i marginesów)",
         restore_defaults: "Przywróć domyślne",
       },
     };
-    return dict[lang]?.[key] || dict.en[key];
-  }
+    const t = (key) => LANG[lang]?.[key] || LANG.en[key];
 
-  _render() {
-    if (!this._root) {
-      this._root = document.createElement("div");
-      this._root.style.maxWidth = "540px";
-      this._root.style.margin = "0 auto";
-      this.appendChild(this._root);
-    }
-    this._root.innerHTML = "";
-
-    const style = document.createElement("style");
-    style.textContent = `
-      .section { margin: 10px 0; padding: 8px 10px; background: var(--secondary-background-color); border-radius: 8px; }
-      h3 { margin: 4px 0 8px 0; font-size: 1.0em; font-weight: 600; }
-      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
-      label { display: block; font-size: 0.85em; opacity: 0.8; margin-bottom: 2px; }
-      input[type="number"], input[type="text"], select { width: 100%; padding: 4px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
-      input[type="color"] { width: 100%; height: 32px; border: none; border-radius: 4px; }
-      ha-switch { margin-top: 6px; }
-      button { margin-top: 10px; padding: 6px 10px; border-radius: 6px; }
+    // === STYLE ===
+    const css = document.createElement("style");
+    css.textContent = `
+      .section {
+        border-radius: 8px;
+        margin: 8px 0;
+        padding: 8px 12px;
+        background: var(--secondary-background-color);
+      }
+      h3 {
+        margin: 4px 0 6px;
+        font-weight: 600;
+      }
+      mwc-button { margin-top: 8px; }
     `;
-    this._root.appendChild(style);
+    this._root.appendChild(css);
 
-    // ============ BASIC SECTION ============
-    const sBasic = this._section(this._t("basic"));
-    sBasic.appendChild(this._haForm([
+    // === BASIC ===
+    this._addSection(t("basic"), [
       { name: "entity", selector: { entity: {} } },
       { name: "name", selector: { text: {} } },
       { name: "show_name", selector: { boolean: {} } },
       { name: "show_logos", selector: { boolean: {} } },
       { name: "full_team_names", selector: { boolean: {} } },
       { name: "show_result_symbols", selector: { boolean: {} } },
-    ]));
+    ]);
 
-    // ============ APPEARANCE ============
-    const sLook = this._section(this._t("appearance"));
-    sLook.appendChild(this._haForm([
+    // === APPEARANCE ===
+    this._addSection(t("appearance"), [
       { name: "fill_mode", selector: { select: { options: ["gradient", "zebra", "clear"] } } },
       { name: "theme_mode", selector: { select: { options: ["auto", "light", "dark"] } } },
-      { name: "light_mode", selector: { boolean: {} } },
-    ]));
+      { name: "light_mode", selector: { boolean: {} }, label: t("light_mode") },
+    ]);
 
-    // ============ RESULT COLORS ============
-    const sColors = this._section(this._t("result_colors"));
-    const colorGrid = document.createElement("div");
-    colorGrid.classList.add("grid");
-    colorGrid.innerHTML = this._colorPicker("colors.win", this._t("win_color")) +
-                          this._colorPicker("colors.draw", this._t("draw_color")) +
-                          this._colorPicker("colors.loss", this._t("loss_color"));
-    sColors.appendChild(colorGrid);
+    // === FILL-MODE SPECIFIC ===
+    if (this._flat["fill_mode"] === "gradient") {
+      this._addSection(t("gradient"), [
+        { name: "gradient.alpha", label: t("alpha"), selector: { number: { mode: "box", min: 0, max: 1, step: 0.1 } } },
+        { name: "gradient.start", label: t("start"), selector: { number: { mode: "box", min: 0, max: 100, step: 1 } } },
+        { name: "gradient.end", label: t("end"), selector: { number: { mode: "box", min: 0, max: 100, step: 1 } } },
+      ]);
+    } else if (this._flat["fill_mode"] === "zebra") {
+      this._addSection(t("zebra"), [
+        { name: "zebra_color", label: t("zebra_color"), selector: { color: { type: "rgb" } } },
+      ]);
+    }
 
-    // ============ GRADIENT ============
-    const sGrad = this._section(this._t("gradient"), "gradient-section");
-    const gradGrid = document.createElement("div");
-    gradGrid.classList.add("grid");
-    gradGrid.innerHTML =
-      this._numberInput("gradient.alpha", this._t("alpha"), 0, 1, 0.1) +
-      this._numberInput("gradient.start", this._t("start"), 0, 100, 1) +
-      this._numberInput("gradient.end", this._t("end"), 0, 100, 1);
-    sGrad.appendChild(gradGrid);
+    // === COLORS ===
+    this._addSection("Colors", [
+      { name: "colors.win", label: t("win_color"), selector: { color: { type: "rgb" } } },
+      { name: "colors.draw", label: t("draw_color"), selector: { color: { type: "rgb" } } },
+      { name: "colors.loss", label: t("loss_color"), selector: { color: { type: "rgb" } } },
+    ]);
 
-    // ============ ZEBRA ============
-    const sZebra = this._section(this._t("zebra"), "zebra-section");
-    const zebraGrid = document.createElement("div");
-    zebraGrid.classList.add("grid");
-    zebraGrid.innerHTML = this._colorPicker("zebra_color", this._t("zebra_color"));
-    sZebra.appendChild(zebraGrid);
+    // === FONTS ===
+    this._addSection(t("font_sizes"), [
+      { name: "font_size.date", label: "Date", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.status", label: "Status", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.teams", label: "Teams", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.score", label: "Score", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+    ]);
 
-    // ============ FONTS ============
-    const sFonts = this._section(this._t("font_sizes"));
-    const fontGrid = document.createElement("div");
-    fontGrid.classList.add("grid");
-    fontGrid.innerHTML =
-      this._numberInput("font_size.date", "Date", 0.5, 3, 0.1) +
-      this._numberInput("font_size.status", "Status", 0.5, 3, 0.1) +
-      this._numberInput("font_size.teams", "Teams", 0.5, 3, 0.1) +
-      this._numberInput("font_size.score", "Score", 0.5, 3, 0.1);
-    sFonts.appendChild(fontGrid);
+    // === ICONS ===
+    this._addSection(t("icon_sizes"), [
+      { name: "icon_size.league", label: "League", selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+      { name: "icon_size.crest", label: "Crest", selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+      { name: "icon_size.result", label: "Result", selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+    ]);
 
-    // ============ ICONS ============
-    const sIcons = this._section(this._t("icon_sizes"));
-    const iconGrid = document.createElement("div");
-    iconGrid.classList.add("grid");
-    iconGrid.innerHTML =
-      this._numberInput("icon_size.league", "League", 8, 128, 1) +
-      this._numberInput("icon_size.crest", "Crest", 8, 128, 1) +
-      this._numberInput("icon_size.result", "Result", 8, 128, 1);
-    sIcons.appendChild(iconGrid);
+    // === COLUMNS ===
+    this._addSection(t("column_widths"), [
+      { name: "columns_pct.date", label: "Date", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.league", label: "League", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.crest", label: "Crests", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.score", label: "Score", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.result", label: "Symbol", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+    ]);
 
-    // ============ COLUMNS ============
-    const sCols = this._section(this._t("column_widths"));
-    const colGrid = document.createElement("div");
-    colGrid.classList.add("grid");
-    colGrid.innerHTML =
-      this._numberInput("columns_pct.date", "Date", 0, 50, 1) +
-      this._numberInput("columns_pct.league", "League", 0, 50, 1) +
-      this._numberInput("columns_pct.crest", "Crests", 0, 50, 1) +
-      this._numberInput("columns_pct.score", "Score", 0, 50, 1) +
-      this._numberInput("columns_pct.result", "Result", 0, 50, 1);
-    sCols.appendChild(colGrid);
-
-    // ============ APPEND ============
-    this._root.append(sBasic, sLook, sColors, sGrad, sZebra, sFonts, sIcons, sCols);
-    this._toggleSections();
-
-    // Restore defaults button
-    const btn = document.createElement("button");
-    btn.textContent = this._t("restore_defaults");
+    // === RESET BUTTON ===
+    const btn = document.createElement("mwc-button");
+    btn.label = t("restore_defaults");
     btn.addEventListener("click", () => {
-      const def = MatchesCard.getStubConfig();
+      const def = this._defaults();
       if (this._config.entity) def.entity = this._config.entity;
-      this._config = def;
-      this._flat = this._flatten(def);
-      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: def } }));
+      this._config = this._mergeDeep({}, def);
+      this._flat = this._flatten(this._config);
+      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
       this._render();
     });
     this._root.appendChild(btn);
   }
 
-  _toggleSections() {
-    const fill = this._flat["fill_mode"];
-    const grad = this._root.querySelector(".gradient-section");
-    const zebra = this._root.querySelector(".zebra-section");
-    if (grad) grad.style.display = fill === "gradient" ? "block" : "none";
-    if (zebra) zebra.style.display = fill === "zebra" ? "block" : "none";
-  }
+  _addSection(title, schema) {
+    const wrap = document.createElement("div");
+    wrap.classList.add("section");
+    const h = document.createElement("h3");
+    h.innerText = title;
+    wrap.appendChild(h);
 
-  _haForm(schema) {
     const form = document.createElement("ha-form");
     form.hass = this._hass;
     form.data = this._flat;
     form.schema = schema;
+
+    // Debounced handler
     form.addEventListener("value-changed", (ev) => {
-      Object.assign(this._flat, ev.detail.value || {});
-      this._config = this._unflatten(this._flat);
-      this._toggleSections();
-      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+      const partialFlat = ev.detail.value || {};
+      Object.assign(this._flat, partialFlat);
+      const nested = this._unflatten(this._flat);
+      this._config = this._mergeDeep(this._config, nested);
+
+      if (this._debounce) clearTimeout(this._debounce);
+      this._debounce = setTimeout(() => {
+        this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+        if (Object.prototype.hasOwnProperty.call(partialFlat, "fill_mode")) this._render();
+      }, 300);
     });
-    return form;
+
+    this._forms.push(form);
+    wrap.appendChild(form);
+    this._root.appendChild(wrap);
   }
 
-  _section(title, cls = "") {
-    const div = document.createElement("div");
-    div.classList.add("section");
-    if (cls) div.classList.add(cls);
-    const h3 = document.createElement("h3");
-    h3.textContent = title;
-    div.appendChild(h3);
-    return div;
-  }
-
-  _colorPicker(path, label) {
-    const val = this._flat[path] || "#000000";
-    return `
-      <div>
-        <label>${label}</label>
-        <input type="color" value="${val}" data-path="${path}">
-      </div>
-    `;
-  }
-
-  _numberInput(path, label, min, max, step) {
-    const val = this._flat[path] ?? 0;
-    return `
-      <div>
-        <label>${label}</label>
-        <input type="number" min="${min}" max="${max}" step="${step}" value="${val}" data-path="${path}">
-      </div>
-    `;
-  }
-
+  // === UTILITIES ===
   _flatten(obj, prefix = "", res = {}) {
     Object.entries(obj || {}).forEach(([k, v]) => {
       const key = prefix ? `${prefix}.${k}` : k;
@@ -270,18 +250,14 @@ class MatchesCardEditor extends HTMLElement {
     return result;
   }
 
-  connectedCallback() {
-    this.addEventListener("input", (ev) => {
-      const path = ev.target.dataset.path;
-      if (!path) return;
-      const val = ev.target.type === "number"
-        ? parseFloat(ev.target.value)
-        : ev.target.value;
-      this._flat[path] = val;
-      this._config = this._unflatten(this._flat);
-      this._toggleSections();
-      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+  _mergeDeep(target, source) {
+    const out = Array.isArray(target) ? [...target] : { ...(target || {}) };
+    Object.entries(source || {}).forEach(([key, value]) => {
+      if (value && typeof value === "object" && !Array.isArray(value))
+        out[key] = this._mergeDeep(out[key] || {}, value);
+      else out[key] = value;
     });
+    return out;
   }
 }
 

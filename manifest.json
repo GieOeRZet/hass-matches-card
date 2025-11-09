@@ -1,10 +1,12 @@
 {
   "name": "Matches Card",
-  "filename": "matches-card.js",
-  "extra_files": [
-    "matches-card-editor.js",
-    "logo/"
-  ],
-  "content_in_root": true,
-  "render_readme": true
+  "version": "0.3.003",
+  "type": "module",
+  "render_readme": true,
+  "resources": [
+    {
+      "type": "module",
+      "url": "hacsfiles/matches-card/matches-card.js"
+    }
+  ]
 }

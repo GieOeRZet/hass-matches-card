@@ -1,4 +1,4 @@
-name: Build and auto-bump Matches Card
+name: Z Build and auto-bump Matches Card
 
 on:
   workflow_dispatch:
@@ -69,7 +69,23 @@ jobs:
           git tag -fa "$VERSION" -m "Auto-release $VERSION"
           git push origin HEAD:main --tags
 
+      # 🟢 Tworzenie release bez ZIP-a
+      - name: 🚀 Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Matches Card ${{ steps.version.outputs.version }}
+          body: |
+            Automatycznie zbudowana wersja karty gotowa do instalacji przez HACS.
+
+            🔄 Zmiany:
+            - Aktualizacja wersji: ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: 🧾 Info
         run: |
-          echo "✅ Zbudowano i wypchnięto wersję ${{ steps.version.outputs.version }}"
-          echo "📁 Repozytorium jest gotowe do pobrania przez HACS."
+          echo "✅ Zbudowano i opublikowano release ${{ steps.version.outputs.version }}"
+          echo "📁 Release dostępny bez pliku ZIP — HACS pobiera bezpośrednio z repozytorium."

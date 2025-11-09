@@ -1,6 +1,11 @@
 name: Build and release Matches Card
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Podaj numer wersji (np. 0.3.036)'
+        required: true
   push:
     tags:
       - "v*"
@@ -10,32 +15,63 @@ jobs:
   build-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: 🧩 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 🧰 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm ci
 
-      - name: Build card
+      - name: 🏗️ Build card
         run: npm run build
 
-      - name: Create release zip
-        run: zip -r matches-card-${{ github.ref_name }}.zip matches-card.js
+      - name: 📝 Update manifest.json & hacs.json version
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          echo "🔖 Ustawiam wersję: $VERSION"
 
-      - name: Publish GitHub release
+          # podmiana w manifest.json
+          if grep -q '"version":' manifest.json; then
+            sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" manifest.json
+          else
+            sed -i "1s/^/{\n  \"version\": \"$VERSION\",/" manifest.json
+          fi
+
+          # podmiana w hacs.json
+          if grep -q '"version":' hacs.json; then
+            sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" hacs.json
+          else
+            sed -i "2i  \"version\": \"$VERSION\"," hacs.json
+          fi
+
+          echo "✅ Zaktualizowano wersję w manifest.json i hacs.json"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json hacs.json
+          git commit -m "build: update version to $VERSION" || echo "Brak zmian do commita"
+
+      - name: 📦 Create release ZIP
+        run: zip -r matches-card-${{ github.event.inputs.version }}.zip matches-card.js
+
+      - name: 🚀 Publish GitHub release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Matches Card ${{ github.ref_name }}
+          tag_name: ${{ github.event.inputs.version }}
+          name: Matches Card ${{ github.event.inputs.version }}
           body: |
-            ✅ Automatic HACS-compatible release
-            - built with inline logos and translations
-            - single JS file
-          files: matches-card-${{ github.ref_name }}.zip
+            ✅ Automatyczny release wersji ${{ github.event.inputs.version }}
+
+            **Nowości:**
+            - Edytor z przyciskiem Reset 🎨
+            - Slider przezroczystości tła
+            - Mini podglądy kolorów jak w HA Theme Editor
+            - Dynamiczne tło karty (RGBA)
+            - Zaktualizowano wersję w manifest.json i hacs.json
+          files: matches-card-${{ github.event.inputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

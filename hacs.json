@@ -1,7 +1,10 @@
 {
   "name": "Matches Card",
-  "content_in_root": false,
-  "render_readme": true,
-  "hide_default_branch": false,
-  "zip_release": true
+  "filename": "matches-card.js",
+  "extra_files": [
+    "matches-card-editor.js",
+    "logo/"
+  ],
+  "content_in_root": true,
+  "render_readme": true
 }

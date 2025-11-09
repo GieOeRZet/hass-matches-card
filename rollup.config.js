@@ -6,13 +6,18 @@ import json from "@rollup/plugin-json";
 export default {
   input: "src/matches-card.js",
   output: {
-    file: "matches-card.js",
+    file: "matches-card.js",      // <- scalony plik w głównym katalogu repo
     format: "es",
   },
   plugins: [
-    resolve(),
-    image(), // inline PNG/SVG
-    json(),  // inline translations
+    resolve({
+      browser: true,
+      exportConditions: ["default", "module", "import"]
+    }),
+    image(),
+    json(),
     terser()
   ],
+  // 🔥 Wbuduj wszystkie zależności (w tym "lit") do finalnego pliku
+  external: [], 
 };

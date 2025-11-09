@@ -1,196 +1,201 @@
-// =============================================================================
-//  Matches Card Editor – pełna wersja dla 0.3.001
+// ============================================================================
+//  Matches Card Editor – v0.3.100 Stable Rebuild
 //  Autor: GieOeRZet
+//  Repo:  https://github.com/GieOeRZet/matches-card
 // ============================================================================
 
 class MatchesCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this._config = {};
+    this._flat = {};
+  }
+
+  _defaults() {
+    return {
+      name: "90minut Matches",
+      show_name: true,
+      show_logos: true,
+      full_team_names: true,
+      show_result_symbols: true,
+      fill_mode: "gradient",
+      theme_mode: "auto",
+      font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
+      icon_size: { league: 26, crest: 24, result: 26 },
+      gradient: { alpha: 0.5, start: 35, end: 100 },
+      columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
+      colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
+    };
+  }
+
   setConfig(config) {
-    this.config = JSON.parse(JSON.stringify(config || {}));
+    this._config = this._mergeDeep(this._defaults(), config || {});
+    this._flat = this._flatten(this._config);
+    this._render();
   }
 
-  connectedCallback() {
-    this.renderEditor();
+  set hass(hass) {
+    this._hass = hass;
+    if (this._forms) this._forms.forEach((f) => (f.hass = hass));
   }
 
-  _update(path, value) {
-    const parts = path.split(".");
-    let target = this.config;
-    while (parts.length > 1) {
-      const key = parts.shift();
-      if (!(key in target)) target[key] = {};
-      target = target[key];
+  _render() {
+    if (!this._root) {
+      this._root = document.createElement("div");
+      this._root.style.maxWidth = "520px";
+      this._root.style.margin = "0 auto";
+      this._root.style.padding = "10px";
+      this.appendChild(this._root);
     }
-    target[parts[0]] = value;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this.config } }));
-  }
 
-  _reset() {
-    if (!confirm("Na pewno zresetować wszystkie wartości do domyślnych?")) return;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: {} } }));
-  }
+    this._root.innerHTML = "";
+    this._forms = [];
 
-  renderEditor() {
-    if (!this.config) return;
-    const c = this.config;
-
-    this.innerHTML = `
-      <style>
-        .editor {
-          display: grid;
-          gap: 12px;
-          padding: 12px;
-          font-family: Arial, sans-serif;
-        }
-        .section {
-          border: 1px solid rgba(255,255,255,0.15);
-          border-radius: 10px;
-          padding: 10px;
-          background: rgba(255,255,255,0.03);
-        }
-        .section h3 {
-          margin: 0 0 6px;
-          font-size: 1em;
-          color: var(--primary-color);
-        }
-        .row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin: 6px 0;
-        }
-        label { flex: 1; font-size: 0.9em; }
-        input[type="color"],
-        input[type="number"],
-        select {
-          width: 100px;
-          text-align: right;
-        }
-        input[type="checkbox"] {
-          transform: scale(1.2);
-        }
-        button {
-          background: var(--primary-color);
-          color: white;
-          border: none;
-          padding: 6px 12px;
-          border-radius: 6px;
-          cursor: pointer;
-          margin-top: 10px;
-        }
-      </style>
-
-      <div class="editor">
-
-        <div class="section">
-          <h3>⚙️ Ustawienia ogólne</h3>
-          <div class="row">
-            <label>Nazwa karty</label>
-            <input type="text" value="${c.name || ''}"
-              oninput="this.getRootNode().host._update('name', this.value)" />
-          </div>
-          <div class="row">
-            <label>Pokaż nazwę</label>
-            <input type="checkbox" ${c.show_name ? "checked" : ""}
-              onchange="this.getRootNode().host._update('show_name', this.checked)" />
-          </div>
-          <div class="row">
-            <label>Pełne nazwy drużyn</label>
-            <input type="checkbox" ${c.full_team_names ? "checked" : ""}
-              onchange="this.getRootNode().host._update('full_team_names', this.checked)" />
-          </div>
-        </div>
-
-        <div class="section">
-          <h3>🎨 Wygląd i kolory</h3>
-          <div class="row">
-            <label>Tryb wypełnienia</label>
-            <select onchange="this.getRootNode().host._update('fill_mode', this.value)">
-              ${['gradient','zebra','none'].map(m=>`<option value="${m}" ${c.fill_mode===m?'selected':''}>${m}</option>`).join('')}
-            </select>
-          </div>
-          <div class="row">
-            <label>Pokaż loga</label>
-            <input type="checkbox" ${c.show_logos ? "checked" : ""}
-              onchange="this.getRootNode().host._update('show_logos', this.checked)" />
-          </div>
-          <div class="row">
-            <label>Symbole wyników</label>
-            <input type="checkbox" ${c.show_result_symbols ? "checked" : ""}
-              onchange="this.getRootNode().host._update('show_result_symbols', this.checked)" />
-          </div>
-
-          <div class="row">
-            <label>Kolor wygranej</label>
-            <input type="color" value="${c.colors?.win || '#3ba55d'}"
-              onchange="this.getRootNode().host._update('colors.win', this.value)" />
-          </div>
-          <div class="row">
-            <label>Kolor remisu</label>
-            <input type="color" value="${c.colors?.draw || '#468cd2'}"
-              onchange="this.getRootNode().host._update('colors.draw', this.value)" />
-          </div>
-          <div class="row">
-            <label>Kolor porażki</label>
-            <input type="color" value="${c.colors?.loss || '#e23b3b'}"
-              onchange="this.getRootNode().host._update('colors.loss', this.value)" />
-          </div>
-        </div>
-
-        <div class="section">
-          <h3>📐 Gradient</h3>
-          <div class="row">
-            <label>Start (%)</label>
-            <input type="number" min="0" max="100" value="${c.gradient?.start ?? 35}"
-              oninput="this.getRootNode().host._update('gradient.start', parseInt(this.value))" />
-          </div>
-          <div class="row">
-            <label>Koniec (%)</label>
-            <input type="number" min="0" max="100" value="${c.gradient?.end ?? 100}"
-              oninput="this.getRootNode().host._update('gradient.end', parseInt(this.value))" />
-          </div>
-          <div class="row">
-            <label>Przezroczystość</label>
-            <input type="number" min="0" max="1" step="0.05" value="${c.gradient?.alpha ?? 0.5}"
-              oninput="this.getRootNode().host._update('gradient.alpha', parseFloat(this.value))" />
-          </div>
-        </div>
-
-        <div class="section">
-          <h3>🔠 Rozmiary czcionek</h3>
-          ${["date","status","teams","score"].map(k=>`
-            <div class="row">
-              <label>${k}</label>
-              <input type="number" step="0.1" value="${c.font_size?.[k] ?? 1}"
-                oninput="this.getRootNode().host._update('font_size.${k}', parseFloat(this.value))" />
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="section">
-          <h3>🏆 Rozmiary ikon</h3>
-          ${["league","crest","result"].map(k=>`
-            <div class="row">
-              <label>${k}</label>
-              <input type="number" step="1" value="${c.icon_size?.[k] ?? 24}"
-                oninput="this.getRootNode().host._update('icon_size.${k}', parseInt(this.value))" />
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="section">
-          <h3>📊 Proporcje kolumn (%)</h3>
-          ${["date","league","crest","score","result"].map(k=>`
-            <div class="row">
-              <label>${k}</label>
-              <input type="number" step="1" value="${c.columns_pct?.[k] ?? 10}"
-                oninput="this.getRootNode().host._update('columns_pct.${k}', parseInt(this.value))" />
-            </div>
-          `).join('')}
-        </div>
-
-        <button onclick="this.getRootNode().host._reset()">🔄 Resetuj do domyślnych</button>
-      </div>
+    const css = document.createElement("style");
+    css.textContent = `
+      .section {
+        margin-bottom: 16px;
+        border-radius: 10px;
+        padding: 10px 14px;
+        background: var(--card-background-color);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      }
+      .section h4 {
+        margin: 0 0 8px 0;
+        font-size: 1em;
+        font-weight: 600;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        padding-bottom: 4px;
+      }
+      ha-form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 12px;
+      }
+      ha-form ha-control-number {
+        min-width: 100px;
+      }
     `;
+    this._root.appendChild(css);
+
+    // === Podstawowe ===
+    const sBasic = this._createSection("Podstawowe");
+    const schemaBasic = [
+      { name: "entity", selector: { entity: {} } },
+      { name: "name", selector: { text: {} } },
+      { name: "show_name", selector: { boolean: {} } },
+      { name: "show_logos", selector: { boolean: {} } },
+      { name: "full_team_names", selector: { boolean: {} } },
+      { name: "show_result_symbols", selector: { boolean: {} } },
+    ];
+    sBasic.appendChild(this._makeForm(schemaBasic));
+
+    // === Wygląd ===
+    const sLook = this._createSection("Wygląd");
+    const schemaLook = [
+      { name: "fill_mode", selector: { select: { options: ["gradient", "zebra", "none"] } } },
+      { name: "theme_mode", selector: { select: { options: ["auto", "light", "dark"] } } },
+    ];
+    sLook.appendChild(this._makeForm(schemaLook));
+
+    // === Kolory wyników ===
+    const sColors = this._createSection("Kolory wyników");
+    const schemaColors = [
+      { name: "colors.win", label: "Wygrana", selector: { color: {} } },
+      { name: "colors.draw", label: "Remis", selector: { color: {} } },
+      { name: "colors.loss", label: "Porażka", selector: { color: {} } },
+    ];
+    sColors.appendChild(this._makeForm(schemaColors));
+
+    // === Czcionki ===
+    const sFonts = this._createSection("Czcionki (em)");
+    const schemaFonts = [
+      { name: "font_size.date", label: "Data", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.status", label: "Status", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.teams", label: "Zespoły", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+      { name: "font_size.score", label: "Wynik", selector: { number: { mode: "box", min: 0.5, max: 3, step: 0.1 } } },
+    ];
+    sFonts.appendChild(this._makeForm(schemaFonts));
+
+    // === Ikony ===
+    const sIcons = this._createSection("Ikony (px)");
+    const schemaIcons = [
+      { name: "icon_size.league", label: "Liga", selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+      { name: "icon_size.crest", label: "Herb", selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+      { name: "icon_size.result", label: "Symbol", selector: { number: { mode: "box", min: 8, max: 128, step: 1 } } },
+    ];
+    sIcons.appendChild(this._makeForm(schemaIcons));
+
+    // === Układ kolumn ===
+    const sCols = this._createSection("Układ kolumn (%)");
+    const schemaCols = [
+      { name: "columns_pct.date", label: "Data", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.league", label: "Liga", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.crest", label: "Herby", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.score", label: "Wynik", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+      { name: "columns_pct.result", label: "Symbol", selector: { number: { mode: "box", min: 0, max: 50, step: 1 } } },
+    ];
+    sCols.appendChild(this._makeForm(schemaCols));
+  }
+
+  _createSection(title) {
+    const sec = document.createElement("div");
+    sec.classList.add("section");
+    const h = document.createElement("h4");
+    h.textContent = title;
+    sec.appendChild(h);
+    this._root.appendChild(sec);
+    return sec;
+  }
+
+  _makeForm(schema) {
+    const form = document.createElement("ha-form");
+    form.hass = this._hass;
+    form.data = this._flat;
+    form.schema = schema;
+    form.addEventListener("value-changed", (ev) => {
+      const partialFlat = ev.detail.value || {};
+      Object.assign(this._flat, partialFlat);
+      const nested = this._unflatten(this._flat);
+      this._config = this._mergeDeep(this._config, nested);
+      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+    });
+    this._forms.push(form);
+    return form;
+  }
+
+  _flatten(obj, prefix = "", res = {}) {
+    Object.entries(obj || {}).forEach(([k, v]) => {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (v && typeof v === "object" && !Array.isArray(v)) this._flatten(v, key, res);
+      else res[key] = v;
+    });
+    return res;
+  }
+
+  _unflatten(flat) {
+    const result = {};
+    Object.entries(flat || {}).forEach(([path, value]) => {
+      const parts = path.split(".");
+      let cur = result;
+      while (parts.length > 1) {
+        const p = parts.shift();
+        if (!(p in cur) || typeof cur[p] !== "object") cur[p] = {};
+        cur = cur[p];
+      }
+      cur[parts[0]] = value;
+    });
+    return result;
+  }
+
+  _mergeDeep(target, source) {
+    const out = Array.isArray(target) ? [...target] : { ...(target || {}) };
+    Object.entries(source || {}).forEach(([key, value]) => {
+      if (value && typeof value === "object" && !Array.isArray(value))
+        out[key] = this._mergeDeep(out[key] || {}, value);
+      else out[key] = value;
+    });
+    return out;
   }
 }
 

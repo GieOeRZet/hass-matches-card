@@ -1,12 +1,11 @@
 // ============================================================================
-//  Matches Card (90minut) – v0.3.505
+//  Matches Card (90minut) – v0.3.506
 //  Author: GieOeRZet
 //  Description:
-//    - Fill modes: gradient / zebra / clear
-//    - Light mode: fully transparent (no ha-card)
-//    - Perfect vertical alignment for score column (matches team layout)
-//    - Monospace font for equal-width digits
-//    - Stable layout (0% column hides it), square crests, compact spacing
+//    - Equal padding (2px 3px) on all table cells
+//    - Center-aligned scores (no monospace)
+//    - Stable, clean layout for gradient/zebra/clear fill modes
+//    - Fully transparent light mode supported
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
@@ -71,7 +70,7 @@ class MatchesCard extends HTMLElement {
         td {
           text-align: center;
           vertical-align: middle;
-          padding: 2px 4px;
+          padding: 2px 3px;
         }
         tr { border-bottom: 1px solid ${rowSep}; }
 
@@ -88,20 +87,19 @@ class MatchesCard extends HTMLElement {
 
         /* --- Score alignment --- */
         .dual-cell.score {
-          align-items: flex-start;
+          align-items: center;
           justify-content: center;
         }
         .dual-cell.score div {
-          font-family: monospace;
-          text-align: left;
-          width: 2ch;
+          text-align: center;
         }
 
         /* --- Teams layout --- */
         .team-cell {
           text-align: left;
           vertical-align: middle;
-          padding-left: 6px;
+          padding-left: 3px;
+          padding-right: 3px;
         }
         .team-row {
           display: flex;
@@ -254,7 +252,6 @@ class MatchesCard extends HTMLElement {
           stateObj.attributes.friendly_name ||
           "90minut Matches";
 
-    // Render
     if (this.config.light_mode) {
       this.innerHTML = `${style}<table class="matches-table">${rows}</table>`;
     } else {
@@ -288,6 +285,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "matches-card",
   name: "Matches Card (90minut)",
-  description: "Match display card with gradient/zebra/clear fill modes, transparent light mode, and aligned scores.",
-  version: "0.3.505",
+  description: "Balanced layout with centered scores and even 2px/3px padding for all columns.",
+  version: "0.3.506",
 });

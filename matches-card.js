@@ -1,30 +1,151 @@
-import{LitElement as e,nothing as a,html as t,css as s}from"lit";const o={title:"Matches",show_logos:!0,show_league:!0,max_rows:12,bg_color:"#1e1e1e",bg_alpha:.95,text_color:"#ffffff",accent_color:"#03a9f4",name_col_width:60,score_col_width:15,meta_col_width:15,logo_col_width:10,matches:[{team_home:"Górnik Zabrze",team_away:"Ruch Chorzów",result:"2:1",date:"2025-11-09 18:00",league:"Ekstraklasa",live:!1}]};function i(e){if(!e)return"";const a=e.toLowerCase().replace(/[^a-z0-9]/g,"_"),t=`/hacsfiles/matches-card/logo/${a}.png`,s=`https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/${a}.png`,o=new Image;return o.src=t,o.onerror=()=>o.src=s,o.src}class c extends e{static properties={hass:{},_config:{attribute:!1}};static async getConfigElement(){return await import("../../../../../../hacsfiles/matches-card/matches-card-editor.js"),document.createElement("matches-card-editor")}static getStubConfig(){return{...o}}setConfig(e){this._config={...o,...e}}getCardSize(){const e=Math.min(this._config?.matches?.length||1,this._config?.max_rows||o.max_rows);return 1+Math.max(1,Math.floor(.7*e))}render(){if(!this._config)return a;const e=this._config,s=this.hexToRgba(e.bg_color,e.bg_alpha),i=e.text_color||o.text_color,c=e.accent_color||o.accent_color,r=[e.show_logos?`${e.logo_col_width}%`:null,`${e.name_col_width}%`,`${e.score_col_width}%`,`${e.meta_col_width}%`].filter(Boolean).join(" "),l=Array.isArray(e.matches)?e.matches:[];return t`
-      <ha-card style="--mc-bg:${s};--mc-fg:${i};--mc-accent:${c};">
-        <div class="header"><div class="title">${e.title||o.title}</div></div>
+import { LitElement, html, css, nothing } from "lit";
+
+const defaultConfig = {
+  title: "Matches",
+  show_logos: true,
+  show_league: true,
+  max_rows: 12,
+  bg_color: "#1e1e1e",
+  bg_alpha: 0.95,
+  text_color: "#ffffff",
+  accent_color: "#03a9f4",
+  name_col_width: 60,
+  score_col_width: 15,
+  meta_col_width: 15,
+  logo_col_width: 10,
+  matches: [
+    {
+      team_home: "Górnik Zabrze",
+      team_away: "Ruch Chorzów",
+      result: "2:1",
+      date: "2025-11-09 18:00",
+      league: "Ekstraklasa",
+      live: false
+    }
+  ]
+};
+
+// 🔹 bezpośredni fallback – lokalnie lub z GitHuba
+function resolveLogo(name) {
+  if (!name) return "";
+  const key = name.toLowerCase().replace(/[^a-z0-9]/g, "_");
+  const local = `/hacsfiles/matches-card/logo/${key}.png`;
+  const remote = `https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/${key}.png`;
+  const img = new Image();
+  img.src = local;
+  img.onerror = () => (img.src = remote);
+  return img.src;
+}
+
+class MatchesCard extends LitElement {
+  static properties = {
+    hass: {},
+    _config: { attribute: false }
+  };
+
+  static async getConfigElement() {
+    // 🔸 dynamiczny import edytora (nie musi być w bundle)
+    await import("/hacsfiles/matches-card/matches-card-editor.js");
+    return document.createElement("matches-card-editor");
+  }
+
+  static getStubConfig() {
+    return { ...defaultConfig };
+  }
+
+  setConfig(config) {
+    this._config = { ...defaultConfig, ...config };
+  }
+
+  getCardSize() {
+    const count = Math.min(
+      this._config?.matches?.length || 1,
+      this._config?.max_rows || defaultConfig.max_rows
+    );
+    return 1 + Math.max(1, Math.floor(0.7 * count));
+  }
+
+  render() {
+    if (!this._config) return nothing;
+    const c = this._config;
+
+    const bg = this.hexToRgba(c.bg_color, c.bg_alpha);
+    const text = c.text_color || defaultConfig.text_color;
+    const accent = c.accent_color || defaultConfig.accent_color;
+
+    const grid = [
+      c.show_logos ? `${c.logo_col_width}%` : null,
+      `${c.name_col_width}%`,
+      `${c.score_col_width}%`,
+      `${c.meta_col_width}%`
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const rows = Array.isArray(c.matches) ? c.matches : [];
+
+    return html`
+      <ha-card style="--mc-bg:${bg};--mc-fg:${text};--mc-accent:${accent};">
+        <div class="header"><div class="title">${c.title || defaultConfig.title}</div></div>
         <div class="table">
-          ${0===l.length?t`<div class="empty">Brak meczów</div>`:l.slice(0,e.max_rows).map((e,a)=>this.renderRow(e,a,r))}
+          ${rows.length === 0
+            ? html`<div class="empty">Brak meczów</div>`
+            : rows.slice(0, c.max_rows).map((m, i) => this.renderRow(m, i, grid))}
         </div>
       </ha-card>
-    `}renderRow(e,s,o){const c=(e.status||"").toString().toUpperCase().includes("LIVE")||!0===e.live,r=e.team_home||e.home||"",l=e.team_away||e.away||"",n=e.result??(null!=e.home_score&&null!=e.away_score?`${e.home_score}:${e.away_score}`:"-"),d=e.date||e.when||"",g=e.league||"",h=this._config.show_logos?i(r):"",m=this._config.show_logos?i(l):"";return t`
-      <div class="row ${c?"live":""}" style="grid-template-columns:${o};">
-        ${this._config.show_logos?t`
-              <div class="cell logos">
-                ${h?t`<img src="${h}" alt="${r}" />`:t`<div class="fallback">${g}</div>`}
-                ${m?t`<img src="${m}" alt="${l}" />`:t`<div class="fallback">${g}</div>`}
-              </div>
-            `:a}
+    `;
+  }
 
-        <div class="cell teams" title="${r} vs ${l}">
-          ${c?t`<span class="live-dot"></span>`:a}
-          <span class="team">${r}</span>
+  renderRow(m, i, grid) {
+    const live =
+      (m.status || "").toString().toUpperCase().includes("LIVE") || m.live === true;
+    const home = m.team_home || m.home || "";
+    const away = m.team_away || m.away || "";
+    const result =
+      m.result ?? (m.home_score != null && m.away_score != null ? `${m.home_score}:${m.away_score}` : "-");
+    const date = m.date || m.when || "";
+    const league = m.league || "";
+
+    const logoHome = this._config.show_logos ? resolveLogo(home) : "";
+    const logoAway = this._config.show_logos ? resolveLogo(away) : "";
+
+    return html`
+      <div class="row ${live ? "live" : ""}" style="grid-template-columns:${grid};">
+        ${this._config.show_logos
+          ? html`
+              <div class="cell logos">
+                ${logoHome
+                  ? html`<img src="${logoHome}" alt="${home}" />`
+                  : html`<div class="fallback">${league}</div>`}
+                ${logoAway
+                  ? html`<img src="${logoAway}" alt="${away}" />`
+                  : html`<div class="fallback">${league}</div>`}
+              </div>
+            `
+          : nothing}
+
+        <div class="cell teams" title="${home} vs ${away}">
+          ${live ? html`<span class="live-dot"></span>` : nothing}
+          <span class="team">${home}</span>
           <span class="vs">vs</span>
-          <span class="team">${l}</span>
+          <span class="team">${away}</span>
         </div>
 
-        <div class="cell score">${n}</div>
-        <div class="cell meta">${d}${this._config.show_league&&g?` • ${g}`:""}</div>
+        <div class="cell score">${result}</div>
+        <div class="cell meta">${date}${this._config.show_league && league ? ` • ${league}` : ""}</div>
       </div>
-    `}hexToRgba(e,a=1){if(!e)return"rgba(30,30,30,0.9)";let t=e.replace("#","");3===t.length&&(t=[...t].map(e=>e+e).join(""));const s=parseInt(t,16);return`rgba(${s>>16&255}, ${s>>8&255}, ${255&s}, ${a})`}static styles=s`
+    `;
+  }
+
+  hexToRgba(hex, alpha = 1) {
+    if (!hex) return "rgba(30,30,30,0.9)";
+    let c = hex.replace("#", "");
+    if (c.length === 3) c = [...c].map((x) => x + x).join("");
+    const i = parseInt(c, 16);
+    return `rgba(${(i >> 16) & 255}, ${(i >> 8) & 255}, ${i & 255}, ${alpha})`;
+  }
+
+  static styles = css`
     :host {
       --mc-bg: #1e1e1e;
       --mc-fg: #fff;
@@ -116,4 +237,7 @@ import{LitElement as e,nothing as a,html as t,css as s}from"lit";const o={title:
         opacity: 0.7;
       }
     }
-  `}customElements.define("matches-card",c);
+  `;
+}
+
+customElements.define("matches-card", MatchesCard);

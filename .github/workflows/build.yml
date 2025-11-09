@@ -1,65 +1,41 @@
-name: 🚀 Build and Release Matches Card
+name: Build and release Matches Card
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Numer wersji (np. 0.3.010)"
-        required: true
   push:
     tags:
-      - '*'
+      - "v*"
+      - "[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
-  build:
+  build-release:
     runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ github.event.inputs.version || github.ref_name }}
-
     steps:
-      - name: 🧩 Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: 🧾 Update manifest.json version
-        run: |
-          echo "Updating version to ${VERSION}"
-          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" manifest.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: 🧱 Prepare temporary dist folder
-        run: |
-          mkdir -p dist
-          cp -r logo translations manifest.json hacs.json matches-card.js matches-card-editor.js README.md dist/
+      - name: Install dependencies
+        run: npm ci
 
-      - name: 📦 Create ZIP package
-        run: |
-          cd dist
-          zip -r matches-card-${VERSION}.zip .
-          ls -lh matches-card-${VERSION}.zip
+      - name: Build card
+        run: npm run build
 
-      - name: 🏷️ Commit and tag version
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add manifest.json hacs.json
-          git commit -m "Bump version to ${VERSION}" || echo "No changes to commit"
-          git tag -fa "${VERSION}" -m "Matches Card ${VERSION}"
-          git push origin "${VERSION}" --force
-          git push
+      - name: Create release zip
+        run: zip -r matches-card-${{ github.ref_name }}.zip matches-card.js
 
-      - name: 🚀 Create GitHub Release
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}
-          name: Matches Card ${{ env.VERSION }}
+          tag_name: ${{ github.ref_name }}
+          name: Matches Card ${{ github.ref_name }}
           body: |
-            Automatyczna kompilacja karty gotowa do instalacji przez HACS.
-
-            ✅ Zmiany:
-            - wersja: ${{ env.VERSION }}
-            - pliki w głównym katalogu ZIP-a (`content_in_root: true`)
-            - pełna zgodność z Home Assistant i HACS
-          draft: false
-          prerelease: false
-          files: ./dist/matches-card-${{ env.VERSION }}.zip
+            ✅ Automatic HACS-compatible release
+            - built with inline logos and translations
+            - single JS file
+          files: matches-card-${{ github.ref_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

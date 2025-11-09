@@ -1,0 +1,8 @@
+{
+  "name": "Matches Card (90minut)",
+  "content_in_root": true,
+  "country": "PL",
+  "homeassistant": "2024.6.0",
+  "category": "frontend",
+  "render_readme": true
+}

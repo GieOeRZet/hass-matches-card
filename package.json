@@ -1,6 +1,6 @@
 {
   "name": "matches-card",
-  "version": "0.3.040",
+  "version": "0.3.001",
   "description": "Custom Lovelace card for displaying match data (Górnik Zabrze edition)",
   "type": "module",
   "scripts": {

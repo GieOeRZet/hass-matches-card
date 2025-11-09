@@ -1,4 +1,4 @@
-name: 🔧 X Build & Auto-Release Matches Card
+name: 🔧 AA Build & Auto-Release Matches Card
 
 on:
   workflow_dispatch:
@@ -65,8 +65,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add matches-card.js package.json manifest.json hacs.json
           git commit -m "build: auto-release ${NEW_VERSION}" || echo "No changes to commit"
-          git tag -fa "${NEW_VERSION}" -m "Matches Card ${NEW_VERSION}"
-          git push origin HEAD:main --force --tags
+          git tag -a "${NEW_VERSION}" -m "Matches Card ${NEW_VERSION}"
+          git push origin HEAD:main --tags
 
       - name: 🪶 Create GitHub Release
         uses: softprops/action-gh-release@v1

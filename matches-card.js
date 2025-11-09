@@ -124,11 +124,12 @@ class MatchesCard extends HTMLElement {
 
         const [homeScore, awayScore] = (match.score || "-").split("-");
 
+        // --- 🔹 Logotypy lig z GitHuba (raw.githubusercontent.com)
         const leagueIcon =
           match.league === "L"
-            ? "/hacsfiles/matches-card/ekstraklasa.png"
+            ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/ekstraklasa.png"
             : match.league === "PP"
-            ? "/hacsfiles/matches-card/puchar.png"
+            ? "https://raw.githubusercontent.com/GieOeRZet/matches-card/main/logo/puchar.png"
             : null;
 
         const homeTeam = this.config.full_team_names ? match.home || "" : (match.home || "").split(" ")[0] || "";

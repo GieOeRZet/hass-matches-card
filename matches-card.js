@@ -80,9 +80,6 @@ class MatchesCard extends HTMLElement {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 4px;
-          padding-top: 2px;
-          padding-bottom: 2px;
         }
 
         /* --- Score alignment --- */

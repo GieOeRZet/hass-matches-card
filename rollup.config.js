@@ -1,7 +1,5 @@
 import resolve from "@rollup/plugin-node-resolve";
-import commonjs from "@rollup/plugin-commonjs";
-import terser from "@rollup/plugin-terser";
-import image from "@rollup/plugin-image";
+import { terser } from "@rollup/plugin-terser";
 import json from "@rollup/plugin-json";
 
 export default {
@@ -9,16 +7,10 @@ export default {
   output: {
     file: "matches-card.js",
     format: "es",
-    inlineDynamicImports: true
+    sourcemap: false
   },
   plugins: [
-    resolve({
-      browser: true,
-      preferBuiltins: false,
-      dedupe: ["lit", "lit-html", "lit-element"]
-    }),
-    commonjs(),
-    image(),
+    resolve(),
     json(),
     terser()
   ]

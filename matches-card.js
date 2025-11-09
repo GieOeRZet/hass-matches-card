@@ -1,8 +1,12 @@
 // ============================================================================
-//  Matches Card (90minut) – v0.3.501
+//  Matches Card (90minut) – v0.3.503
 //  Author: GieOeRZet
-//  Description: Enhanced match card for HA with gradient/zebra modes,
-//               automatic translation (PL/EN), light mode, compact layout.
+//  Description:
+//  - Gradient / Zebra / Clear fill modes
+//  - Light mode (no header, no padding, keeps background)
+//  - Auto PL/EN translation
+//  - Fixed crest spacing (equal top/bottom)
+//  - Stable column layout (0 = hidden)
 // ============================================================================
 
 class MatchesCard extends HTMLElement {
@@ -24,7 +28,7 @@ class MatchesCard extends HTMLElement {
       font_size: { date: 0.9, status: 0.8, teams: 1.0, score: 1.0 },
       icon_size: { league: 26, crest: 24, result: 26 },
       gradient: { alpha: 0.5, start: 35, end: 100 },
-      zebra_color: "#f0f0f0",
+      zebra_color: "",
       columns_pct: { date: 10, league: 10, crest: 10, score: 10, result: 8 },
       colors: { win: "#3ba55d", loss: "#e23b3b", draw: "#468cd2" },
     };
@@ -70,11 +74,7 @@ class MatchesCard extends HTMLElement {
         ha-card {
           padding: ${this.config.light_mode ? "0" : "12px 6px"};
           font-family: "Sofascore Sans", Arial, sans-serif;
-          background: ${
-            this.config.light_mode
-              ? "transparent"
-              : "var(--card-background-color)"
-          };
+          background: var(--card-background-color);
         }
         table { width: 100%; border-collapse: collapse; }
         td {
@@ -86,8 +86,16 @@ class MatchesCard extends HTMLElement {
         .dual-cell {
           display: flex;
           flex-direction: column;
-          justify-content: center;
           align-items: center;
+          justify-content: space-between;
+          gap: 4px;
+          padding-top: 2px;
+          padding-bottom: 2px;
+        }
+        .dual-cell > * {
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .team-cell {
           text-align: left;
@@ -252,7 +260,7 @@ class MatchesCard extends HTMLElement {
       ${style}
       ${
         this.config.light_mode
-          ? `<table>${rows}</table>`
+          ? `<ha-card><table>${rows}</table></ha-card>`
           : `<ha-card ${cardName ? `header="${cardName}"` : ""}><table>${rows}</table></ha-card>`
       }
     `;
@@ -282,6 +290,6 @@ window.customCards.push({
   type: "matches-card",
   name: "Matches Card (90minut)",
   description:
-    "Match display card with gradient/zebra/clear fill modes, automatic PL/EN translation, and compact editor.",
-  version: "0.3.501",
+    "Match display card with gradient/zebra/clear fill modes, automatic PL/EN translation, and compact light mode.",
+  version: "0.3.503",
 });

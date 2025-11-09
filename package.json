@@ -1,7 +1,15 @@
 {
+  "type": "module",
   "name": "matches-card",
-  "version": "0.3.034",
-  "description": "Football Matches Card for Home Assistant Lovelace",
+  "version": "0.3.037",
+  "description": "Football Matches Card for Home Assistant Lovelace UI",
+  "keywords": [
+    "home-assistant",
+    "homeassistant",
+    "lovelace",
+    "custom-cards",
+    "matches"
+  ],
   "scripts": {
     "build": "rollup -c"
   },
@@ -11,5 +19,7 @@
     "@rollup/plugin-image": "^3.0.0",
     "@rollup/plugin-json": "^6.1.0",
     "rollup": "^3.29.4"
-  }
+  },
+  "author": "GieOeRZet",
+  "license": "MIT"
 }

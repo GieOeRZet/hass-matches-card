@@ -1,5 +1,8 @@
+// --- Importy ---
 import { LitElement, html, css, nothing } from "lit";
+import "./matches-card-editor.js"; // 👈 edytor wbudowany w bundle
 
+// --- Domyślna konfiguracja ---
 const defaultConfig = {
   title: "Matches",
   show_logos: true,
@@ -25,7 +28,7 @@ const defaultConfig = {
   ]
 };
 
-// 🔹 bezpośredni fallback – lokalnie lub z GitHuba
+// --- Fallback logo: lokalnie → GitHub ---
 function resolveLogo(name) {
   if (!name) return "";
   const key = name.toLowerCase().replace(/[^a-z0-9]/g, "_");
@@ -37,15 +40,14 @@ function resolveLogo(name) {
   return img.src;
 }
 
+// --- Główna klasa karty ---
 class MatchesCard extends LitElement {
   static properties = {
     hass: {},
     _config: { attribute: false }
   };
 
-  static async getConfigElement() {
-    // 🔸 dynamiczny import edytora (nie musi być w bundle)
-    await import("/hacsfiles/matches-card/matches-card-editor.js");
+  static getConfigElement() {
     return document.createElement("matches-card-editor");
   }
 
@@ -86,7 +88,9 @@ class MatchesCard extends LitElement {
 
     return html`
       <ha-card style="--mc-bg:${bg};--mc-fg:${text};--mc-accent:${accent};">
-        <div class="header"><div class="title">${c.title || defaultConfig.title}</div></div>
+        <div class="header">
+          <div class="title">${c.title || defaultConfig.title}</div>
+        </div>
         <div class="table">
           ${rows.length === 0
             ? html`<div class="empty">Brak meczów</div>`
@@ -102,7 +106,10 @@ class MatchesCard extends LitElement {
     const home = m.team_home || m.home || "";
     const away = m.team_away || m.away || "";
     const result =
-      m.result ?? (m.home_score != null && m.away_score != null ? `${m.home_score}:${m.away_score}` : "-");
+      m.result ??
+      (m.home_score != null && m.away_score != null
+        ? `${m.home_score}:${m.away_score}`
+        : "-");
     const date = m.date || m.when || "";
     const league = m.league || "";
 
@@ -132,7 +139,9 @@ class MatchesCard extends LitElement {
         </div>
 
         <div class="cell score">${result}</div>
-        <div class="cell meta">${date}${this._config.show_league && league ? ` • ${league}` : ""}</div>
+        <div class="cell meta">
+          ${date}${this._config.show_league && league ? ` • ${league}` : ""}
+        </div>
       </div>
     `;
   }
@@ -240,4 +249,7 @@ class MatchesCard extends LitElement {
   `;
 }
 
-customElements.define("matches-card", MatchesCard);
+// --- Bezpieczna rejestracja komponentu ---
+if (!customElements.get("matches-card")) {
+  customElements.define("matches-card", MatchesCard);
+}

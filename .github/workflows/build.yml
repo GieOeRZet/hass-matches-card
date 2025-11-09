@@ -1,21 +1,20 @@
-name: Build and release Matches Card
+name: Build and auto-bump Matches Card
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Podaj numer wersji (np. 0.3.038)'
-        required: true
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
+        description: 'Podaj numer wersji (np. 0.3.041) — jeśli puste, zostanie zwiększona automatycznie'
+        required: false
 
 jobs:
-  build-release:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-      - name: 🧩 Checkout repository
+      - name: 🧩 Checkout
         uses: actions/checkout@v4
 
       - name: 🧰 Setup Node.js
@@ -26,62 +25,45 @@ jobs:
       - name: 📦 Install dependencies
         run: npm install
 
+      - name: 🔍 Ustal wersję
+        id: version
+        run: |
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$INPUT_VERSION" ]; then
+            echo "Brak wersji — pobieram ostatni tag..."
+            LATEST_TAG=$(git tag --sort=-v:refname | head -n 1)
+            if [ -z "$LATEST_TAG" ]; then
+              LATEST_TAG="0.3.000"
+            fi
+            PREFIX=$(echo "$LATEST_TAG" | cut -d. -f1-2)
+            PATCH=$(echo "$LATEST_TAG" | awk -F. '{print $3 + 1}')
+            VERSION="${PREFIX}.${PATCH}"
+          else
+            VERSION="$INPUT_VERSION"
+          fi
+          echo "📌 Nowa wersja: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: 🏗️ Build card (Rollup)
         run: npm run build
 
-      - name: 💾 Commit built file to repo (for HACS compliance)
+      - name: 📝 Update version in hacs.json & manifest.json
         run: |
+          VERSION=${{ steps.version.outputs.version }}
+          echo "🔖 Aktualizuję wersję $VERSION"
+
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" hacs.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" manifest.json
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add hacs.json manifest.json
+          git commit -m "bump version to $VERSION" || echo "no changes"
+
+      - name: 💾 Commit built file to repo
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
           git add matches-card.js
-          git commit -m "build: include matches-card.js for HACS compliance" || echo "No changes to commit"
-          git push origin HEAD:main
-
-      - name: 📝 Update manifest.json & hacs.json version
-        run: |
-          VERSION=${{ github.event.inputs.version }}
-          echo "🔖 Ustawiam wersję: $VERSION"
-
-          # podmiana w manifest.json
-          if grep -q '"version":' manifest.json; then
-            sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" manifest.json
-          else
-            sed -i "1s/^/{\n  \"version\": \"$VERSION\",/" manifest.json
-          fi
-
-          # podmiana w hacs.json
-          if grep -q '"version":' hacs.json; then
-            sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" hacs.json
-          else
-            sed -i "2i  \"version\": \"$VERSION\"," hacs.json
-          fi
-
-          echo "✅ Zaktualizowano wersję w manifest.json i hacs.json"
-
-          git add manifest.json hacs.json
-          git commit -m "build: update version to $VERSION" || echo "Brak zmian do commita"
-          git push origin HEAD:main
-
-      - name: 📦 Create release ZIP
-        run: |
-          mkdir dist
-          cp matches-card.js dist/
-          cd dist
-          zip -r ../matches-card-${{ github.event.inputs.version }}.zip .
-
-      - name: 🚀 Publish GitHub release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.event.inputs.version }}
-          name: Matches Card ${{ github.event.inputs.version }}
-          body: |
-            ✅ Automatyczny release wersji ${{ github.event.inputs.version }}
-
-            **Zmiany:**
-            - automatyczny commit scalonego pliku do repo (HACS compliance)
-            - aktualizacja wersji w manifest.json i hacs.json
-            - build Rollup z inline grafikami i tłumaczeniami
-            - wydanie gotowe do instalacji przez HACS
-          files: matches-card-${{ github.event.inputs.version }}.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git commit -m "build: update matches-card.js ($VERSION)" || echo "no changes"
+          git tag -fa "$VERSION" -m "Auto-release $VERSION"
+          git push origin HEAD:main --tags

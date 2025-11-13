@@ -4,5 +4,6 @@
   "country": "PL",
   "homeassistant": "2024.6.0",
   "category": "frontend",
-  "render_readme": true
+  "render_readme": true,
+  "version": "0.3.508"
 }

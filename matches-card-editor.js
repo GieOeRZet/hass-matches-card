@@ -1,16 +1,17 @@
 // ============================================================================
-//  Matches Card Editor – v0.3.506 (restored stable version)
-//  Author: GieOeRZet
-//  Notes:
-//    - Working color pickers
-//    - Working zebra + gradient controls
-//    - YAML sync OK
-//    - This is the editor that worked before later refactors
+//   Matches Card – Visual Editor (modern, collapsible, debounced)
+//   Works with v0.3.001-MOD
 // ============================================================================
 
 class MatchesCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this._config = {};
+    this._debouncers = {};
+  }
+
   setConfig(config) {
-    this._config = config;
+    this._config = JSON.parse(JSON.stringify(config));
     this.render();
   }
 
@@ -18,100 +19,243 @@ class MatchesCardEditor extends HTMLElement {
     this._hass = hass;
   }
 
-  render() {
-    if (!this._config) return;
+  // ---------------------------------------------------------
+  //     DEBOUNCE – 500 ms OR ONLY ON BLUR (for typing)
+  // ---------------------------------------------------------
+  _debounce(key, fn, delay = 500) {
+    if (this._debouncers[key]) clearTimeout(this._debouncers[key]);
+    this._debouncers[key] = setTimeout(() => fn(), delay);
+  }
 
+  // ---------------------------------------------------------
+  //     CONFIG UPDATE (but NOT immediately refreshing UI)
+  // ---------------------------------------------------------
+  _updateConfig(key, value) {
+    this._config[key] = value;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+  }
+
+  _updateNested(root, key, value) {
+    this._config[root] = this._config[root] || {};
+    this._config[root][key] = value;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+  }
+
+  // ---------------------------------------------------------
+  //     HELPER COMPONENT GENERATORS
+  // ---------------------------------------------------------
+  _numInput(label, root, key, min, max, step = 1) {
+    const value = this._config[root]?.[key] ?? "";
+    const id = `${root}-${key}`;
+
+    return `
+      <div class="field">
+        <label for="${id}">${label}</label>
+        <input 
+          id="${id}" 
+          type="number" 
+          min="${min}" 
+          max="${max}" 
+          step="${step}" 
+          value="${value}"
+        />
+      </div>
+    `;
+  }
+
+  _colorInput(label, root, key) {
+    const value = this._config[root]?.[key] ?? "#000000";
+    const id = `${root}-${key}`;
+
+    return `
+      <div class="field">
+        <label for="${id}">${label}</label>
+        <input type="color" id="${id}" value="${value}">
+      </div>
+    `;
+  }
+
+  _switch(label, key) {
+    const val = this._config[key] ?? true;
+    const id = `switch-${key}`;
+
+    return `
+      <div class="field">
+        <label for="${id}">${label}</label>
+        <input type="checkbox" id="${id}" ${val ? "checked" : ""}>
+      </div>
+    `;
+  }
+
+  _fillModeSelector() {
+    const val = this._config.fill_mode || "gradient";
+
+    return `
+      <div class="field">
+        <label>Fill mode</label>
+        <select id="fill_mode">
+          <option value="gradient" ${val === "gradient" ? "selected" : ""}>Gradient</option>
+          <option value="zebra" ${val === "zebra" ? "selected" : ""}>Zebra</option>
+          <option value="clear" ${val === "clear" ? "selected" : ""}>Clear</option>
+        </select>
+      </div>
+    `;
+  }
+
+  // ---------------------------------------------------------
+  //     MAIN RENDER
+  // ---------------------------------------------------------
+  render() {
     this.innerHTML = `
       <style>
-        .card-config {
-          padding: 12px;
+        .section {
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          margin-bottom: 12px;
+          overflow: hidden;
         }
-        .card-config h4 {
-          margin-top: 18px;
-          margin-bottom: 6px;
+        .section-header {
+          padding: 10px;
+          background: var(--ha-card-background, #f2f2f2);
+          cursor: pointer;
+          font-weight: bold;
         }
-        .card-config input[type="color"] {
+        .section-body {
+          padding: 10px 14px;
+          display: none;
+        }
+        .field {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 8px 0;
+        }
+        input[type="number"] {
+          width: 80px;
+        }
+        input[type="color"] {
           width: 60px;
-          height: 32px;
+          height: 28px;
+          padding: 0;
           border: none;
-          background: none;
         }
       </style>
 
-      <div class="card-config">
-        <paper-input
-          label="Nazwa karty"
-          value="${this._config.name || ''}"
-          configKey="name"></paper-input>
+      <div class="editor">
 
-        <ha-entity-picker
-          label="Encja"
-          .hass="${window.hass}"
-          value="${this._config.entity || ''}"
-          configKey="entity"
-          allow-custom-entity
-        ></ha-entity-picker>
+        <!-- GENERAL -->
+        <div class="section" id="sec-general">
+          <div class="section-header">General</div>
+          <div class="section-body">
+            ${this._switch("Show card name", "show_name")}
+            ${this._switch("Show team logos", "show_logos")}
+            ${this._switch("Show full team names", "full_team_names")}
+          </div>
+        </div>
 
-        <paper-dropdown-menu label="Tryb wypełnienia" configKey="fill_mode">
-          <paper-listbox slot="dropdown-content" selected="${this._fillIndex()}">
-            <paper-item>gradient</paper-item>
-            <paper-item>zebra</paper-item>
-            <paper-item>clear</paper-item>
-          </paper-listbox>
-        </paper-dropdown-menu>
+        <!-- FILL MODE -->
+        <div class="section" id="sec-fill">
+          <div class="section-header">Fill mode</div>
+          <div class="section-body">
+            ${this._fillModeSelector()}
+            ${this._colorInput("Zebra color", "", "zebra_color")}
+          </div>
+        </div>
 
-        <h4>Kolor zebra</h4>
-        <input type="color" value="${this._config.zebra_color || '#f0f0f0'}" configKey="zebra_color" />
+        <!-- GRADIENT -->
+        <div class="section" id="sec-gradient">
+          <div class="section-header">Gradient colors (WIN / DRAW / LOSS)</div>
+          <div class="section-body">
+            ${this._colorInput("Win color", "colors", "win")}
+            ${this._colorInput("Draw color", "colors", "draw")}
+            ${this._colorInput("Loss color", "colors", "loss")}
+            ${this._numInput("Gradient alpha", "gradient", "alpha", 0, 1, 0.05)}
+          </div>
+        </div>
 
-        <h4>Gradient – kolory</h4>
-        <label>Wygrana</label>
-        <input type="color" value="${this._config.gradient?.win || '#009900'}" configKey="gradient.win" />
+        <!-- TEXT SIZES -->
+        <div class="section" id="sec-fonts">
+          <div class="section-header">Font sizes</div>
+          <div class="section-body">
+            ${this._numInput("Date size", "font_size", "date", 0.5, 2, 0.1)}
+            ${this._numInput("Status size", "font_size", "status", 0.5, 2, 0.1)}
+            ${this._numInput("Team name size", "font_size", "teams", 0.5, 2, 0.1)}
+            ${this._numInput("Score font size", "font_size", "score", 0.5, 2, 0.1)}
+          </div>
+        </div>
 
-        <label>Remis</label>
-        <input type="color" value="${this._config.gradient?.draw || '#888888'}" configKey="gradient.draw" />
+        <!-- ICON SIZES -->
+        <div class="section" id="sec-icons">
+          <div class="section-header">Icon sizes</div>
+          <div class="section-body">
+            ${this._numInput("League icon", "icon_size", "league", 10, 60)}
+            ${this._numInput("Team crest", "icon_size", "crest", 10, 60)}
+            ${this._numInput("Result circle", "icon_size", "result", 10, 60)}
+          </div>
+        </div>
 
-        <label>Porażka</label>
-        <input type="color" value="${this._config.gradient?.loss || '#cc0000'}" configKey="gradient.loss" />
-
-        <h4>Gradient – przezroczystość (alpha)</h4>
-        <paper-slider
-          min="0" max="1" step="0.01"
-          value="${this._config.gradient?.alpha || 0.55}"
-          configKey="gradient.alpha"
-        ></paper-slider>
       </div>
     `;
 
-    this.querySelectorAll('[configKey]').forEach(el => {
-      el.addEventListener('value-changed', ev => this._updateConfig(el, ev.detail.value));
-      el.addEventListener('change', ev => this._updateConfig(el, el.value));
+    // ACTIVATE ACCORDIONS
+    this.querySelectorAll(".section").forEach(sec => {
+      sec.querySelector(".section-header").addEventListener("click", () => {
+        const body = sec.querySelector(".section-body");
+        body.style.display = body.style.display === "block" ? "none" : "block";
+      });
     });
+
+    // LISTENERS
+    this._attachListeners();
   }
 
-  _fillIndex() {
-    const mode = this._config.fill_mode || 'gradient';
-    return ['gradient', 'zebra', 'clear'].indexOf(mode);
-  }
+  // ---------------------------------------------------------
+  //     LISTENERS WITH DEBOUNCE + BLUR APPLY
+  // ---------------------------------------------------------
+  _attachListeners() {
+    // NUMBER INPUTS
+    this.querySelectorAll("input[type=number]").forEach(el => {
+      const [root, key] = el.id.split("-");
+      el.addEventListener("input", () => {
+        this._debounce(el.id, () => {
+          this._updateNested(root, key, Number(el.value));
+        });
+      });
 
-  _updateConfig(el, value) {
-    const key = el.getAttribute('configKey');
-    if (!key) return;
+      el.addEventListener("blur", () => {
+        this._updateNested(root, key, Number(el.value));
+      });
+    });
 
-    let obj = JSON.parse(JSON.stringify(this._config));
+    // COLOR INPUTS
+    this.querySelectorAll("input[type=color]").forEach(el => {
+      const [root, key] = el.id.split("-");
+      el.addEventListener("input", () => {
+        this._debounce(el.id, () => {
+          this._updateNested(root, key, el.value);
+        });
+      });
+      el.addEventListener("blur", () => {
+        this._updateNested(root, key, el.value);
+      });
+    });
 
-    if (key.includes('.')) {
-      const [main, sub] = key.split('.');
-      obj[main] = obj[main] || {};
-      obj[main][sub] = value;
-    } else {
-      obj[key] = value;
-    }
+    // SWITCHES
+    this.querySelectorAll("input[type=checkbox]").forEach(el => {
+      const key = el.id.replace("switch-", "");
+      el.addEventListener("change", () => {
+        this._updateConfig(key, el.checked);
+      });
+    });
 
-    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: obj }}));
-  }
-
-  static getConfigElement() {
-    return document.createElement("matches-card-editor");
+    // SELECTS
+    this.querySelectorAll("select").forEach(el => {
+      el.addEventListener("change", () => {
+        if (el.id === "fill_mode") {
+          this._updateConfig("fill_mode", el.value);
+        }
+      });
+    });
   }
 }
 
